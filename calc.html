@@ -29,11 +29,12 @@
 		box-shadow: 0 8px 0 #778;}
 	#out { padding-top:30px; font:19px serif; color:#778;}
 	#hcont { min-height:15px; background-color:#778; }
-	#help1, #help2 { float:left; font:13px serif; color:#ccd; cursor:pointer }
+	#help1, #help2, #help3 { float:left; font:13px serif; color:#ccd; cursor:pointer }
 	#help1 { margin-left:100px; }
-	#help2 { margin-left:300px; }
-	#help1c, #help2c {clear:both; width:100%; display:none;
-		font:15px serif; color:#ccd;}
+	#help2 { margin-left:130px; }
+	#help3 { margin-left:130px; }
+	#help1c, #help2c, #help3c {clear:both; width:100%; height:300px;
+		display:none; overflow:auto; font:15px serif; color:#ccd;}
 	.t { width:100%; border:0; border-collapse:collapse; }
 	.t td:nth-child(1) { width:250px; text-align:right; }
 	.t td:nth-child(2) { width:100px; text-align:center; }
@@ -50,9 +51,23 @@
 		<input id="in" type="text" size="86" style="width:600px" onkeypress="go(event);" value="me*c^2 in keV"></input>
 		<div id="outcont"><div id="out"></div></div>
 		<div id="hcont">
-			<div id="help1" onclick="help(this)">Constants</div>
-			<div id="help2" onclick="help(this)">Units</div>
+			<div id="help1" onclick="help(this)">Examples</div>
+			<div id="help2" onclick="help(this)">Constants</div>
+			<div id="help3" onclick="help(this)">Units</div>
 			<div id="help1c">
+				<br/>
+				<table style="width:100%"><tbody>
+					<tr><td>2*3</td></tr>
+					<tr><td>1/2 m</td></tr>
+					<tr><td>4 watt * 8 second</td></tr>
+					<tr><td>4 W * 8 s in J</td></tr>
+					<tr><td>4 hours + 2 day in seconds</td></tr>
+					<tr><td>c</td></tr>
+					<tr><td>1/(4*pi*e0)</td></tr>
+					<tr><td>( e0*(3keV) / (e^2*1e23 cm^-3) )^0.5 in nanometer</td></tr>
+				</tbody></table>
+			</div>
+			<div id="help2c">
 				<table class="t"><tbody>
 					<tr><td>speed of light</td><td>c</td><td>299792458. m s<sup>-1</sup></td></tr>
 					<tr><td>gravitational constant</td><td>G</td><td>6.67384 &#215; 10<sup>-11</sup> m<sup>3</sup> kg<sup>-1</sup>s<sup>-2</sup></td></tr>
@@ -70,7 +85,7 @@
 					<tr><td>fine-structure constant</td><td>alpha</td><td>7.2973525698 &#215; 10<sup>-3</sup></td></tr>
 				</tbody></table>
 			</div>
-			<div id="help2c">
+			<div id="help3c">
 				<table class="t"><tbody>
 					<tr><td>meter</td><td>m</td><td>m</td></tr>
 					<tr><td>gram</td><td>g</td><td>0.001 kg</td></tr>
@@ -164,7 +179,6 @@
 	re_u1.push(/[Ll]itres?$/);re_u2.push(/[lL]$/);ru.push([3,0,0,0,0,0]); rf.push(1e-3);
 	re_u1.push(/[Tt]onnes?$/);  re_u2.push(/t$/); ru.push([0,1,0,0,0,0]); rf.push(1e3);
 	re_u1.push(/[Ee]lectron[Vv]olts?$/);re_u2.push(/eV$/);ru.push([2,1,-2,0,0,0]); rf.push(1.60217653e-19);
-	re_u1.push(/barns?$/);      re_u2.push(/b$/);  ru.push([2,0,0,0,0,0]); rf.push(1e-28);
 	re_u1.push(/bars?$/);       re_u2.push(/bar$/);ru.push([-1,1,-2,0,0,0]); rf.push(1e5);
 	re_u1.push(/atmospheres?$/);re_u2.push(/atm$/);ru.push([-1,1,-2,0,0,0]); rf.push(100);
 	var nu=ru.length;
@@ -204,6 +218,7 @@
 	re_u1.push(/^[Yy]ards?$/); ru.push([1,0,0,0,0,0]); rf.push(0.9144);
 	re_u1.push(/^[Mm]iles?$|^mi$/); ru.push([1,0,0,0,0,0]); rf.push(1609.344);
 	re_u1.push(/^[Aa]cres?$/); ru.push([2,0,0,0,0,0]); rf.push(4046.8564224);
+	re_u1.push(/barns?$/); ru.push([2,0,0,0,0,0]); rf.push(1e-28);
 	re_u1.push(/^[Pp]arsecs?$/); ru.push([1,0,0,0,0,0]); rf.push(3.085677581491e+16);
 	re_u1.push(/^[Ll]ight-?[Yy]ears?$|^ly$/); ru.push([1,0,0,0,0,0]); rf.push(9460730472580800);
 	re_u1.push(/^[Ee]rgs?$/); ru.push([2,1,-2,0,0,0]); rf.push(1e-7);
@@ -228,7 +243,6 @@
 		for(var i=0;i<na;i+=1) {if(a[i]!=b[i]){return false;}}
 		return true;
 	}
-	
 
 	// Main callback
 	function go(e) {
@@ -510,7 +524,7 @@
 	function help(e) {
 		ee=document.getElementById(e.id+"c");
 		if(ee.style.display!="block") {
-			for(var i=1; i<3; i+=1) {
+			for(var i=1; i<4; i+=1) {
 				document.getElementById("help"+i).style.textDecoration="none";
 				document.getElementById("help"+i).style.color="#ccd";
 				document.getElementById("help"+i+"c").style.display="none";
