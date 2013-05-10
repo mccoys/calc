@@ -1,10 +1,16 @@
 calc
 ====
 
-A web-browser-based calculator for physicists.
-Includes common constants, works with units.
+A web-browser-based calculator for physicists.  
+ - physical constants
+ - units
+ - works off-line
 
-Tested in:
+ 
+####Instructions
+Simply open calc.html in the web browser of your choice.
+
+####Tested in
  - Firefox 20+ for mac.
  - Safari 5+
 
