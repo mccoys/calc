@@ -56,7 +56,7 @@
 			<div id="help3" onclick="help(this)">Units</div>
 			<div id="help1c">
 				<br/>
-				<table style="width:100%"><tbody>
+				<table style="width:100%"><tbody id="examples">
 					<tr><td>2*3</td></tr>
 					<tr><td>1/2 m</td></tr>
 					<tr><td>4 watt * 8 second</td></tr>
@@ -244,11 +244,15 @@
 		return true;
 	}
 
-	// Main callback
+	// Main callback, when Enter is pressed
 	function go(e) {
 		if(typeof(e)=='undefined' && window.event) { e=window.event; }
 		if(e.keyCode!=13) { return false; }
-		
+		calcstart();
+	}
+	
+	// Initiate calculation
+	function calcstart() {
 		eout.innerHTML = "";
 		
 		var s=ein.value;
@@ -539,6 +543,13 @@
 		}
 	}
 	
+	// Make examples clickable
+	var exa = document.getElementById("examples").getElementsByTagName("tr");
+	for(var k=0; k<exa.length; k+=1) {
+		exa[k].style.cursor = "pointer";
+		exa[k].onclick = function(){ein.value=this.childNodes[0].innerHTML; calcstart();};
+	}
+		
 -->
 </script>
 </body>
