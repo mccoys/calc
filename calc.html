@@ -93,6 +93,9 @@
 					<tr><td>ampere</td><td>A</td><td>A</td></tr>
 					<tr><td>kelvin</td><td>K</td><td>K</td></tr>
 					<tr><td>mole</td><td>mol</td><td>mol</td></tr>
+					<tr><td>candela</td><td>cd</td><td>cd</td></tr>
+					<tr><td>radian</td><td>rad</td><td></td></tr>
+					<tr><td>degree</td><td>deg</td><td>0.0174532925 rad</td></tr>
 					<tr><td>hertz</td><td>Hz</td><td>s<sup>-1</sup></td></tr>
 					<tr><td>newton</td><td>N</td><td>m kg s<sup>-2</sup></td></tr>
 					<tr><td>pascal</td><td>Pa</td><td>m<sup>-1</sup> kg s<sup>-2</sup></td></tr>
@@ -152,35 +155,36 @@
 	co.push('7.2973525698e-3'); re_co.push(/(\W)alpha(?!\w)/g); // alpha
 	
 	// SI units or similar
-	var un=["m","kg","s","A","K","mol"];
+	var un=["m","kg","s","A","K","mol","cd","rad"];
 	var re_u1=[], re_u2=[], rf=[], ru=[];
-	re_u1.push(/[Mm]eters?$/);re_u2.push(/m$/); ru.push([1,0,0,0,0,0]); rf.push(1);
-	re_u1.push(/[Gg]rams?$/);   re_u2.push(/g$/); ru.push([0,1,0,0,0,0]); rf.push(1e-3);
-	re_u1.push(/[Ss]econds?$/); re_u2.push(/s$/); ru.push([0,0,1,0,0,0]); rf.push(1);
-	re_u1.push(/[Aa]mperes?$/); re_u2.push(/A$/); ru.push([0,0,0,1,0,0]); rf.push(1);
-	re_u1.push(/[Kk]elvins?$/); re_u2.push(/K$/); ru.push([0,0,0,0,1,0]); rf.push(1);
-	re_u1.push(/[Mm]oles?$/); re_u2.push(/mol$/); ru.push([0,0,0,0,0,1]); rf.push(1);
-	re_u1.push(/[Hh]ertz$/);   re_u2.push(/Hz$/);ru.push([0,0,-1,0,0,0]); rf.push(1);
-	re_u1.push(/[Nn]ewtons?$/); re_u2.push(/N$/);ru.push([1,1,-2,0,0,0]); rf.push(1);
-	re_u1.push(/[Pp]ascals?$/);re_u2.push(/Pa$/);ru.push([-1,1,-2,0,0,0]); rf.push(1);
-	re_u1.push(/[Jj]oules?$/);  re_u2.push(/J$/);ru.push([2,1,-2,0,0,0]); rf.push(1);
-	re_u1.push(/[Ww]atts?$/);   re_u2.push(/W$/);ru.push([2,1,-3,0,0,0]); rf.push(1);
-	re_u1.push(/[Cc]oulombs?$/);re_u2.push(/C$/); ru.push([0,0,1,1,0,0]); rf.push(1);
-	re_u1.push(/[Vv]olts?$/);   re_u2.push(/V$/);ru.push([2,1,-3,-1,0,0]); rf.push(1);
-	re_u1.push(/[Ff]arads?$/);  re_u2.push(/F$/);ru.push([-2,-1,4,2,0,0]); rf.push(1);
-	re_u1.push(/[Oo]hms?$/);  re_u2.push(/ohm$/);ru.push([2,1,-3,-2,0,0]); rf.push(1);
-	re_u1.push(/[Ss]iemens$/);  re_u2.push(/S$/);ru.push([-2,-1,3,2,0,0]); rf.push(1);
-	re_u1.push(/[Ww]ebers?$/); re_u2.push(/Wb$/);ru.push([2,1,-2,-1,0,0]); rf.push(1);
-	re_u1.push(/[Tt]eslas?$/);  re_u2.push(/T$/);ru.push([0,1,-2,-1,0,0]); rf.push(1);
-	re_u1.push(/[Gg]auss$/);  re_u2.push(/ /);ru.push([0,1,-2,-1,0,0]); rf.push(1e-4);
-	re_u1.push(/[Hh]enrys?$/);  re_u2.push(/H$/);ru.push([2,1,-2,-2,0,0]); rf.push(1);
-	re_u1.push(/[Hh]ectares?$/);re_u2.push(/ha$/);ru.push([2,0,0,0,0,0]); rf.push(1e4);
-	re_u1.push(/[Aa]res?$/);    re_u2.push(/a$/); ru.push([2,0,0,0,0,0]); rf.push(100);
-	re_u1.push(/[Ll]itres?$/);re_u2.push(/[lL]$/);ru.push([3,0,0,0,0,0]); rf.push(1e-3);
-	re_u1.push(/[Tt]onnes?$/);  re_u2.push(/t$/); ru.push([0,1,0,0,0,0]); rf.push(1e3);
-	re_u1.push(/[Ee]lectron[Vv]olts?$/);re_u2.push(/eV$/);ru.push([2,1,-2,0,0,0]); rf.push(1.60217653e-19);
-	re_u1.push(/bars?$/);       re_u2.push(/bar$/);ru.push([-1,1,-2,0,0,0]); rf.push(1e5);
-	re_u1.push(/atmospheres?$/);re_u2.push(/atm$/);ru.push([-1,1,-2,0,0,0]); rf.push(100);
+	re_u1.push(/[Mm]eters?$/);re_u2.push(/m$/); ru.push([1,0,0,0,0,0,0,0]); rf.push(1);
+	re_u1.push(/[Gg]rams?$/);   re_u2.push(/g$/); ru.push([0,1,0,0,0,0,0,0]); rf.push(1e-3);
+	re_u1.push(/[Ss]econds?$/); re_u2.push(/s$/); ru.push([0,0,1,0,0,0,0,0]); rf.push(1);
+	re_u1.push(/[Aa]mperes?$/); re_u2.push(/A$/); ru.push([0,0,0,1,0,0,0,0]); rf.push(1);
+	re_u1.push(/[Kk]elvins?$/); re_u2.push(/K$/); ru.push([0,0,0,0,1,0,0,0]); rf.push(1);
+	re_u1.push(/[Mm]oles?$/); re_u2.push(/mol$/); ru.push([0,0,0,0,0,1,0,0]); rf.push(1);
+	re_u1.push(/[Cc]andelas?$/); re_u2.push(/cd$/); ru.push([0,0,0,0,0,0,1,0]); rf.push(1);
+	re_u1.push(/[Rr]adians?$/); re_u2.push(/rad$/); ru.push([0,0,0,0,0,0,0,1]); rf.push(1);
+	re_u1.push(/[Hh]ertz$/);   re_u2.push(/Hz$/);ru.push([0,0,-1,0,0,0,0,0]); rf.push(1);
+	re_u1.push(/[Nn]ewtons?$/); re_u2.push(/N$/);ru.push([1,1,-2,0,0,0,0,0]); rf.push(1);
+	re_u1.push(/[Pp]ascals?$/);re_u2.push(/Pa$/);ru.push([-1,1,-2,0,0,0,0,0]); rf.push(1);
+	re_u1.push(/[Jj]oules?$/);  re_u2.push(/J$/);ru.push([2,1,-2,0,0,0,0,0]); rf.push(1);
+	re_u1.push(/[Ww]atts?$/);   re_u2.push(/W$/);ru.push([2,1,-3,0,0,0,0,0]); rf.push(1);
+	re_u1.push(/[Cc]oulombs?$/);re_u2.push(/C$/); ru.push([0,0,1,1,0,0,0,0]); rf.push(1);
+	re_u1.push(/[Vv]olts?$/);   re_u2.push(/V$/);ru.push([2,1,-3,-1,0,0,0,0]); rf.push(1);
+	re_u1.push(/[Ff]arads?$/);  re_u2.push(/F$/);ru.push([-2,-1,4,2,0,0,0,0]); rf.push(1);
+	re_u1.push(/[Oo]hms?$/);  re_u2.push(/ohm$/);ru.push([2,1,-3,-2,0,0,0,0]); rf.push(1);
+	re_u1.push(/[Ss]iemens$/);  re_u2.push(/S$/);ru.push([-2,-1,3,2,0,0,0,0]); rf.push(1);
+	re_u1.push(/[Ww]ebers?$/); re_u2.push(/Wb$/);ru.push([2,1,-2,-1,0,0,0,0]); rf.push(1);
+	re_u1.push(/[Tt]eslas?$/);  re_u2.push(/T$/);ru.push([0,1,-2,-1,0,0,0,0]); rf.push(1);
+	re_u1.push(/[Gg]auss$/);  re_u2.push(/ /);ru.push([0,1,-2,-1,0,0,0,0]); rf.push(1e-4);
+	re_u1.push(/[Hh]enrys?$/);  re_u2.push(/H$/);ru.push([2,1,-2,-2,0,0,0,0]); rf.push(1);
+	re_u1.push(/[Hh]ectares?$/);re_u2.push(/ha$/);ru.push([2,0,0,0,0,0,0,0]); rf.push(1e4);
+	re_u1.push(/[Aa]res?$/);    re_u2.push(/a$/); ru.push([2,0,0,0,0,0,0,0]); rf.push(100);
+	re_u1.push(/[Ll]itres?$/);re_u2.push(/[lL]$/);ru.push([3,0,0,0,0,0,0,0]); rf.push(1e-3);
+	re_u1.push(/[Tt]onnes?$/);  re_u2.push(/t$/); ru.push([0,1,0,0,0,0,0,0]); rf.push(1e3);
+	re_u1.push(/[Ee]lectron[Vv]olts?$/);re_u2.push(/eV$/);ru.push([2,1,-2,0,0,0,0,0]); rf.push(1.60217653e-19);
+	re_u1.push(/bars?$/);       re_u2.push(/bar$/);ru.push([-1,1,-2,0,0,0,0,0]); rf.push(1e5);
 	var nu=ru.length;
 	
 	// SI prefixes
@@ -208,20 +212,22 @@
 	var npr=pr.length;
 	
 	// Other units
-	re_u1.push(/^[Mm]inutes?$|^min$/); ru.push([0,0,1,0,0,0]); rf.push(60);
-	re_u1.push(/^[Hh]ours?$/); ru.push([0,0,1,0,0,0]); rf.push(3600);
-	re_u1.push(/^[Dd]ays?$|^d/); ru.push([0,0,1,0,0,0]); rf.push(86400);
-	re_u1.push(/angstroms?$/); ru.push([1,0,0,0,0,0]); rf.push(1e-10);
-	re_u1.push(/^(?:am)?u$/); ru.push([0,1,0,0,0,0]); rf.push(1.66053886e-27);
-	re_u1.push(/^[Ii]nch(?:es)?$$/); ru.push([1,0,0,0,0,0]); rf.push(0.0254);
-	re_u1.push(/^[Ff]oot$|^[Ff]eet$/); ru.push([1,0,0,0,0,0]); rf.push(0.3048);
-	re_u1.push(/^[Yy]ards?$/); ru.push([1,0,0,0,0,0]); rf.push(0.9144);
-	re_u1.push(/^[Mm]iles?$|^mi$/); ru.push([1,0,0,0,0,0]); rf.push(1609.344);
-	re_u1.push(/^[Aa]cres?$/); ru.push([2,0,0,0,0,0]); rf.push(4046.8564224);
-	re_u1.push(/barns?$/); ru.push([2,0,0,0,0,0]); rf.push(1e-28);
-	re_u1.push(/^[Pp]arsecs?$/); ru.push([1,0,0,0,0,0]); rf.push(3.085677581491e+16);
-	re_u1.push(/^[Ll]ight-?[Yy]ears?$|^ly$/); ru.push([1,0,0,0,0,0]); rf.push(9460730472580800);
-	re_u1.push(/^[Ee]rgs?$/); ru.push([2,1,-2,0,0,0]); rf.push(1e-7);
+	re_u1.push(/^[Dd]egrees?$|^deg$/); ru.push([0,0,0,0,0,0,0,1]); rf.push(0.017453292519943295);
+	re_u1.push(/^[Mm]inutes?$|^min$/); ru.push([0,0,1,0,0,0,0,0]); rf.push(60);
+	re_u1.push(/^[Hh]ours?$/); ru.push([0,0,1,0,0,0,0,0]); rf.push(3600);
+	re_u1.push(/^[Dd]ays?$|^d/); ru.push([0,0,1,0,0,0,0,0]); rf.push(86400);
+	re_u1.push(/angstroms?$/); ru.push([1,0,0,0,0,0,0,0]); rf.push(1e-10);
+	re_u1.push(/^(?:am)?u$/); ru.push([0,1,0,0,0,0,0,0]); rf.push(1.66053886e-27);
+	re_u1.push(/^[Ii]nch(?:es)?$$/); ru.push([1,0,0,0,0,0,0,0]); rf.push(0.0254);
+	re_u1.push(/^[Ff]oot$|^[Ff]eet$/); ru.push([1,0,0,0,0,0,0,0]); rf.push(0.3048);
+	re_u1.push(/^[Yy]ards?$/); ru.push([1,0,0,0,0,0,0,0]); rf.push(0.9144);
+	re_u1.push(/^[Mm]iles?$|^mi$/); ru.push([1,0,0,0,0,0,0,0]); rf.push(1609.344);
+	re_u1.push(/^[Aa]cres?$/); ru.push([2,0,0,0,0,0,0,0]); rf.push(4046.8564224);
+	re_u1.push(/barns?$/); ru.push([2,0,0,0,0,0,0,0]); rf.push(1e-28);
+	re_u1.push(/^[Pp]arsecs?$/); ru.push([1,0,0,0,0,0,0,0]); rf.push(3.085677581491e+16);
+	re_u1.push(/^[Ll]ight-?[Yy]ears?$|^ly$/); ru.push([1,0,0,0,0,0,0,0]); rf.push(9460730472580800);
+	re_u1.push(/^[Ee]rgs?$/); ru.push([2,1,-2,0,0,0,0,0]); rf.push(1e-7);
+	re_u1.push(/^atmospheres?$|^atm$/); ru.push([-1,1,-2,0,0,0,0,0]); rf.push(100);
 	var nu1=ru.length;
 	
 	// other regular expressions
@@ -294,7 +300,7 @@
 			// Now we make units readable
 			var u="";
 			if(newu=="") { // if no change of units requested,
-				for(l=0;l<6;l+=1) { // for each of m kg s A K mol,  
+				for(l=0;l<8;l+=1) { // for each of m kg s A K mol cd rad,  
 					if(s[1][l]) { // print unit if exists.
 						u+=un[l];
 						if(s[1][l]!=1) { u+="<sup>"+s[1][l]+"</sup>"; }
@@ -311,12 +317,41 @@
 				s[1]=newu0.replace(/\^([0-9.\-]+)/g,"<sup>$1</sup>");
 				s[0]/=us[0]; // divide the original result by the new units.
 			}
-			// Resolve problems of precision
+			// Resolve some problems of precision
 			s[0]=eval(eval(s[0]).toExponential(15))+"";
 			if(s[0]>1000. && s[0].length>10) { s[0]=eval(s[0]).toExponential(10); }
+			var ss = s[0].split('e');
+			var sss = ss[0];
+			l = sss.length-1;
+			if(l>8) {
+				sss = (sss.replace(/[0-9]/g,"0").substring(0,l))+"1";
+				var tm=(parseFloat(ss[0])-parseFloat(sss))+"",
+					tp=(parseFloat(ss[0])+parseFloat(sss))+"";
+				if     (tm.length<l-4) { ss[0]=tm; }
+				else if(tp.length<l-4) { ss[0]=tp; }
+			}
+			// Space every 3 digits
+			sss = ss[0].split(".");
+			k = sss[0].length % 3;
+			try{ sss[0] = sss[0].substring(0,k) + " "
+						+ sss[0].substring(k).match(/[0-9]{3}/g).join(" "); }
+			catch(e) {}
+			if(sss.length>1) {
+				k = sss[1].length - (sss[1].length % 3);
+				try{ sss[1] = sss[1].substring(0,k).match(/[0-9]{3}/g).join(" ")
+							+ " " + sss[1].substring(k); }
+				catch(e) {}
+			}
+			ss[0] = sss.join(".");
+
+			// Rebuild the string
+			s[0] = ss[0];
+			if(ss.length>1) {s[0] = s[0]+"e"+ss[1];}
+
 			// Convert exponentiation
 			s[0]=s[0].replace(/e[+-]0+/,"");
 			s[0]=s[0].replace(/e\+?(.*)$/," &#215; 10<sup>$1</sup>");
+			
 		}
 		
 		// Output
@@ -336,16 +371,20 @@
 					ff.push([0,""]); // temporarily empty (may contain a function)
 					if(sss.length>0) { // if "(" preceded by string, must be a function
 						switch(sss) { // Convert function to javascript.
-							case "acos": case "asin": case "atan":
-							case "ceil": case "cos": case "exp":
-							case "floor": case "sin": case "tan":
+							case "cos" : case "sin" : case "tan" :
 								ff[ff.length-1]=[1,"Math."+sss+"("];
 								break;
+							case "acos": case "asin": case "atan":
+								ff[ff.length-1]=[2,"Math."+sss+"("];
+								break;
+							case "ceil": case "exp": case "floor":
+								ff[ff.length-1]=[3,"Math."+sss+"("];
+								break;
 							case "ln":
-								ff[ff.length-1]=[1,"Math.log("];
+								ff[ff.length-1]=[4,"Math.log("];
 								break;
 							case "abs": case "sqrt":
-								ff[ff.length-1]=[2,"Math."+sss+"("];
+								ff[ff.length-1]=[5,"Math."+sss+"("];
 								break;
 							default:
 								return ["Error:","unknown function "+sss+"."];
@@ -362,7 +401,7 @@
 					// now ss contains a list of previous values
 					// uu contains a list of previous units
 					// kk contains a list of previous "parenthesis levels"
-					sss=""; uuu=[[0,0,0,0,0,0]]; // sss and uuu are temporary.
+					sss=""; uuu=[[0,0,0,0,0,0,0,0]]; // sss and uuu are temporary.
 					
 					// We now loop backwards to sum all content of the parenthesis.
 					while(kk[kk.length-1]==k) {
@@ -377,18 +416,18 @@
 						
 						// The "^" are treated first.
 						while(ss[ss.length-1]=="^" && kk[kk.length-1]==k) {
-							if(!arrayequal(u,[0,0,0,0,0,0])) // units must be 0 inside a "^".
+							if(!arrayequal(u,[0,0,0,0,0,0,0,0])) // units must be 0 inside a "^".
 								{ return ["Error:","non-dimensionless power expression."];}
 							ss.pop(); kk.pop(); uu.pop(); // remove info.
 							u=uu[uu.length-1]; t=eval(t); // Move once more backwards: evaluate expression.
-							for(l=0;l<6;l+=1) { u[l]*=t; } // Take units to the power.
+							for(l=0;l<8;l+=1) { u[l]*=t; } // Take units to the power.
 							t="Math.pow("+ss[ss.length-1]+","+t+")"; // Convert power to javascript.
 							ss.pop(); kk.pop(); uu.pop(); // remove info.
 						}
 						
 						// If we reached the end of the parenthesis, stop moving backwards.
 						if(kk[kk.length-1]!=k) {
-							for(l=0;l<6;l+=1) { uuu[uuu.length-1][l]+=u[l]; } // combined units.
+							for(l=0;l<8;l+=1) { uuu[uuu.length-1][l]+=u[l]; } // combined units.
 							sss=t+sss; // combined expression.
 							break; // exit loop backwards.
 						}
@@ -396,17 +435,17 @@
 						// Now we treat the other operators.
 						switch(ss[kk.length-1]) {
 							case "*": // If multiplication,
-								for(l=0;l<6;l+=1) { uuu[uuu.length-1][l]+=u[l]; } // add power to units.
+								for(l=0;l<8;l+=1) { uuu[uuu.length-1][l]+=u[l]; } // add power to units.
 								sss="*"+t+sss; ss.pop(); kk.pop(); uu.pop();
 								break;
 							case"/": // If division, 
-								for(l=0;l<6;l+=1) { uuu[uuu.length-1][l]-=u[l]; } // substract power to units.
+								for(l=0;l<8;l+=1) { uuu[uuu.length-1][l]-=u[l]; } // substract power to units.
 								sss="/"+t+sss; ss.pop(); kk.pop(); uu.pop();
 								break;
 							case "+": // If addition,
-								for(l=0;l<6;l+=1) { uuu[uuu.length-1][l]+=u[l]; }
+								for(l=0;l<8;l+=1) { uuu[uuu.length-1][l]+=u[l]; }
 								sss="+"+t+sss; ss.pop(); kk.pop(); uu.pop();
-								uuu.push([0,0,0,0,0,0]); // begin new units.
+								uuu.push([0,0,0,0,0,0,0,0]); // begin new units.
 								break;
 						}
 						//alert(ss+"\n"+kk+"\n"+uu+"\n"+sss+"\n======");
@@ -424,7 +463,10 @@
 					f=ff[ff.length-1]; ff.pop();
 					if(f[0]>0) {
 						sss=f[1]+sss+")"; // Add function to expression.
-						if(!arrayequal(uuu[0],[0,0,0,0,0,0])) { return ["Error:","A function should have dimensionless argument."]; }
+						// if cos, sin or tan, allow radians
+						if(f[0]==1 && uuu[0][7]==1) { uuu[0][7]=0; }
+						// Else, do not allow units in a function.
+						if(!arrayequal(uuu[0],[0,0,0,0,0,0,0,0])) { return ["Error:","A function should have dimensionless argument."]; }
 					} 
 					
 					// Try to evaluate the final expression in parenthesis.
@@ -455,16 +497,16 @@
 		var i=sss.search(re_unit2),j,k,l,ok;
 
 		if(i<0) { // If just a number,
-			sss=[sss,[0,0,0,0,0,0]]; // indicate no units.
+			sss=[sss,[0,0,0,0,0,0,0,0]]; // indicate no units.
 			// Convert back # and @ to E or E-
 			// and evaluate expression
 			sss[0]=eval(sss[0].replace(re_ep1,'E').replace(re_em1,'E-'));
 		} else { // If units, 
-			var u=sss.substring(i),v,w,x,ru_=[0,0,0,0,0,0],rf_=1,pr_;
+			var u=sss.substring(i),v,w,x,ru_=[0,0,0,0,0,0,0,0],rf_=1,pr_;
 			sss=sss.substring(0,i);
 			// now u contains units and sss contains the value.
 			if(sss.length==0) {sss="1";} // if no value, then assume 1.
-			u=u.replace(re_unit3,";$1").split(';'); // Separate units (m kg s A K mol).
+			u=u.replace(re_unit3,";$1").split(';'); // Separate units (m kg s A K mol cd rad).
 			for(j=1; j<u.length; j+=1) { // For each units,
 				v=u[j].split("&"); // If there is a "&", it means "^".
 				w=1; if(v.length>1) { w=v[1]; } // Now w contains the exponent.
@@ -513,7 +555,7 @@
 				// If units not found, error
 				if(ok==0) { return ["Error:","unknown units "+v]; }
 				// Apply units with prefix and factor
-				for(l=0;l<6;l+=1) { ru_[l]+=w*ru[k][l]; }
+				for(l=0;l<8;l+=1) { ru_[l]+=w*ru[k][l]; }
 				rf_*=Math.pow(rf[k]*pr_,w);
 			}
 			try{sss=eval(sss)}
