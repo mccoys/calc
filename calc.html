@@ -33,6 +33,9 @@
 	.t td:nth-child(1) { width:250px; text-align:right; }
 	.t td:nth-child(2) { width:100px; text-align:center; }
 	.t td:nth-child(3) { width:250px; text-align:left; }
+	.graphcont{ width:600px; height:300px; padding:0;
+		margin:0 auto; border:1px solid #dddddd;}
+	
 -->
 </style>
 <link rel="shortcut icon" href="data:image/x-icon;base64,AAABAAEAEBACAAEAAQCwAAAAFgAAACgAAAAQAAAAIAAAAAEAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABYWFgAAAAAAP8AAAD/AAAA//8AAP//AAD//AAA//gAAD/4AAAf+AAAH/gAAB/8AAAf/wAAP/8AAP//AAD//wAAAP8AAAD/AAD/AAAA/wAAAP//AAD//wAA//wAAP/4AAA/+AAAH/gAAB/4AAAf/AAAH/8AAD//AAD//wAA//8AAAD/AAAA/wAA"/>
@@ -60,7 +63,7 @@
 			</g></svg>
 		</div>
 		<input id="in" type="text" size="86" style="width:600px" onkeypress="go(event);" value="me*c^2 in keV"></input>
-		<div id="outcont"><div id="out">&nbsp;</div></div>
+		<div id="outcont"><div id="out"> </div></div>
 		<div id="hcont">
 			<div id="help1" onclick="help(this)">Examples</div>
 			<div id="help2" onclick="help(this)">Constants</div>
@@ -253,6 +256,7 @@
 	// HTML elements
 	var ein  = document.getElementById("in" );
 	var eout = document.getElementById("out");
+	var svgns="http://www.w3.org/2000/svg";
 	
 	// Function for testing equal arrays (must not have subarrays)
 	function arrayequal(a,b) {
@@ -274,7 +278,7 @@
 		for(var i=0; i<co.length; i+=1) {s=s.replace(re_co[i],"$1("+co[i]+")");}
 		return s;
 	}
-	
+
 	// Initiate calculation
 	function calcstart() {
 		eout.innerHTML = "";
@@ -294,6 +298,16 @@
 		for(j=0; j<sin.length; j+=1) {
 			s=sin[j];
 			if(s.trim().length==0) {continue}
+			
+			// if begins with "graph", then graph something
+			if(s.trim().substring(0,6)=="graph ") {
+				var gcont=document.createElement("div"),g=document.createElementNS(svgns,"svg");
+				gcont.className="graphcont";
+				gcont.appendChild(g); eout.appendChild(gcont);
+				g.setAttribute("width",gcont.clientWidth+"px");
+				g.setAttribute("height",gcont.clientHeight+"px");
+				return;
+			}
 			
 			// if "in" is included, it means a change of units
 			s=s.replace(re_in,";").split(';');
