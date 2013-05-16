@@ -39,6 +39,148 @@
 -->
 </style>
 <link rel="shortcut icon" href="data:image/x-icon;base64,AAABAAEAEBACAAEAAQCwAAAAFgAAACgAAAAQAAAAIAAAAAEAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABYWFgAAAAAAP8AAAD/AAAA//8AAP//AAD//AAA//gAAD/4AAAf+AAAH/gAAB/8AAAf/wAAP/8AAP//AAD//wAAAP8AAAD/AAD/AAAA/wAAAP//AAD//wAA//wAAP/4AAA/+AAAH/gAAB/4AAAf/AAAH/8AAD//AAD//wAA//8AAAD/AAAA/wAA"/>
+<script language="javascript">
+<!--
+	var svgns="http://www.w3.org/2000/svg";
+	
+	// Add functions to SVG elements
+	SVGElement.prototype.Group = function() {
+		var e=document.createElementNS(svgns,"g");
+		this.appendChild(e);
+		return e;
+	}
+	SVGElement.prototype.Line = function(x1,y1,x2,y2,stroke,thickness,dash) {
+		var e=document.createElementNS(svgns,"line");
+		this.appendChild(e);
+		if(!dash) { dash="none"; }
+		if(this.AR) { y1*=-this.AR; y2*=-this.AR;} // aspect ratio
+		e.setAttribute("x1",""+x1); e.setAttribute("y1",""+y1);
+		e.setAttribute("x2",""+x2); e.setAttribute("y2",""+y2);
+		e.setAttribute("vector-effect","non-scaling-stroke");
+		e.setAttribute("style","stroke:"+stroke+"; stroke-width:"+thickness+"; stroke-dasharray:"+dash+";");
+		return e;
+	};
+	SVGElement.prototype.Rect = function(x,y,w,h,fill,stroke,thickness) {
+		var e=document.createElementNS(svgns,"rect");
+		this.appendChild(e);
+		if(this.AR) { y*=-this.AR; h*=this.AR;} // aspect ratio
+		e.setAttribute("x",""+x); e.setAttribute("width",""+w);
+		e.setAttribute("y",""+y); e.setAttribute("height",""+h);
+		e.setAttribute("vector-effect","non-scaling-stroke");
+		e.setAttribute("style","fill:"+fill+"; stroke:"+stroke+"; stroke-width:"+thickness+";");
+		return e;
+	};
+	SVGElement.prototype.Polyline = function(points,stroke,thickness,dash) {
+		var e=document.createElementNS(svgns,"polyline");
+		this.appendChild(e);
+		if(!dash) { dash="none"; }
+		if(this.AR) { for(var i=1;i<points.length;i+=2) {points[i]*=-this.AR;} } // aspect ratio
+		e.setAttribute("points",points);
+		e.setAttribute("vector-effect","non-scaling-stroke");
+		e.setAttribute("style","fill:none;stroke:"+stroke+"; stroke-width:"+thickness+"; stroke-dasharray:"+dash+";");
+		return e;
+	};
+	SVGElement.prototype.Text = function(str,x,y,fontsize,color,align,rot) {
+		var t=document.createElementNS(svgns,"text");
+		this.appendChild(t);
+		if(this.AR) { y*=this.AR;} // aspect ratio
+		t.setAttribute("x",x); t.setAttribute("y",y);
+		t.setAttribute("style","font-size:"+fontsize+"px; fill:"+color+";");
+		t.Custom(str,["tspan"]); // insert the text as a tspan
+		// Now get size and set alignment
+		// 'align' can contain NW, NE, NC, SW, SE, SC, MW, ME, or MC
+		var tw=parseFloat(t.getBBox().width), th=parseFloat(t.getBBox().height)*0.72;
+		if (align==undefined) {align='SW';}
+		tw = tw*[0,.5,1]["WCE".indexOf(align[1])];
+		th = th*[0,.5,1]["SMN".indexOf(align[0])];
+		t.setAttribute("x",x-tw); t.setAttribute("y",y+th);
+		// Now rotate
+		if (rot==undefined) { rot=""; }
+		if (rot.length>0) { t.setAttribute("transform","rotate("+rot+","+x+","+y+")"); }
+		return t;
+	};
+	SVGElement.prototype.Custom = function(str,tag) {
+		// create custom element
+		var ts=document.createElementNS(svgns,tag[0]);
+		this.appendChild(ts);
+		for(var k=1;k<tag.length;k+=2){ ts.setAttribute(tag[k],tag[k+1]);}
+		// find tags inside and create corresponding elements
+		var i,ii,iii,tagi,j,jj,tagj;
+		while(str.length>0) {
+			i=str.search(/<[^\/<][^<]+>/); ii=str.length; tagi=[""];
+			if(i<0) { i=str.length; }
+			else {
+				ii=str.indexOf('>',i+1);
+				iii=str.substring(i+1,ii); // inside tag
+				tagi=parseTag(iii);
+			}
+			j=str.indexOf('</'+tag[0]+'>'); tagj="";
+			if(j<0) { j=str.length; }
+			else {
+				jj=str.indexOf('>',j+2);
+				tagj=str.substring(j+2,jj); // inside tag
+			}
+			if(j<i && tagj==tag[0]) {
+				ts.appendChild(document.createTextNode(str.substring(0,j)));
+				return str.substring(jj+1);
+			}
+			ts.appendChild(document.createTextNode(str.substring(0,i)));
+			str=str.substr(ii+1);
+			if(str.length>0) { str=ts.Custom(str,tagi); }
+		}
+		return "";
+	};
+	function parseTag(intag) {
+		var list=new Array(),i,j;
+		i=intag.indexOf(' ');
+		list[0]=intag.substring(0,i); // tag name
+		intag=intag.substring(i).replace(/^\s*/,"");
+		j=1;
+		while(intag.length>0) {
+			i=intag.indexOf('=');
+			if(i<0) { break; }
+			list[j]=intag.substring(0,i); // option
+			j+=1;
+			intag=intag.substring(i+1).replace(/^\s*/,"");
+			if      (intag[0]=='"') { i=intag.search(/[^\\]"/)+2; }
+			else if (intag[0]=="'") { i=intag.search(/[^\\]'/)+2; }
+			else                    { i=intag.indexOf(' '); }
+			if(i<0) { break; }
+			list[j]=intag.substring(0,i).replace(/^["']/,'').replace(/["']\s*$/,''); // value
+			j+=1;
+			intag=intag.substring(i+1).replace(/^\s*/,"");
+		}
+		return list;
+	}
+	
+	// Functions controling the SVG plot
+	SVGGElement.prototype.init = function(x1,x2,y1,y2) { // Define plot limits and scalings
+		this.x1=x1; this.x2=x2; this.y1=y1; this.y2=y2;
+		this.s1=this.w/(x2-x1); this.s2=this.h/(y1-y2); // scalings
+		this.AR=-this.s2/this.s1; // aspect ratio
+		this.t1=-x1*this.s1; this.t2=-y2*this.s2; // translations
+		this.setAttribute("transform","matrix("+this.s1+",0,0,"+this.s1+","+this.t1+","+this.t2+")");
+	}
+	
+
+	
+	// Make SVG plot movable
+	var moving=undefined;
+	function mouseMove(evt) {
+		if(!moving) return;
+		var x = evt.clientX-moving.c10+moving.t1;
+		var y = evt.clientY-moving.c20+moving.t2
+		moving.setAttribute("transform","matrix("+moving.s1+",0,0,"+moving.s1+","+x+","+y+")");
+	}
+	function mouseUp(evt) {
+		if(!moving) return;
+		var e=moving; moving=undefined;
+		e.t1 += evt.clientX-e.c10; e.t2 += evt.clientY-e.c20;
+		e.setAttribute("transform","matrix("+e.s1+",0,0,"+e.s1+","+e.t1+","+e.t2+")");
+		e.update();
+	}
+-->
+</script>
 </head>
 
 <body>
@@ -256,7 +398,6 @@
 	// HTML elements
 	var ein  = document.getElementById("in" );
 	var eout = document.getElementById("out");
-	var svgns="http://www.w3.org/2000/svg";
 	
 	// Function for testing equal arrays (must not have subarrays)
 	function arrayequal(a,b) {
@@ -284,7 +425,8 @@
 		eout.innerHTML = "";
 		
 		var sin=ein.value, sout ="", varout=[], varname,
-			i,j,k,l,u,v,us,newu,newu0,s,ss,sss,tm,tp,ok;
+			i,j,k,l,u,v,us,newu,newu0,s,ss,sss,tm,tp,ok,
+			gcont,g,gw,gh,lx,ly;
 		
 		// wrong characters
 		var err=sin.replace(re_err,'');
@@ -301,11 +443,38 @@
 			
 			// if begins with "graph", then graph something
 			if(s.trim().substring(0,6)=="graph ") {
-				var gcont=document.createElement("div"),g=document.createElementNS(svgns,"svg");
+				gcont=document.createElement("div"); g=document.createElementNS(svgns,"svg");
 				gcont.className="graphcont";
 				gcont.appendChild(g); eout.appendChild(gcont);
-				g.setAttribute("width",gcont.clientWidth+"px");
-				g.setAttribute("height",gcont.clientHeight+"px");
+				gw=gcont.clientWidth ; g.setAttribute("width" ,gw+"px");
+				gh=gcont.clientHeight; g.setAttribute("height",gh+"px");
+				// We create "plot" which groups all elements in the graph for easy scrolling
+				plot=g.Group(); plot.w=gw; plot.h=gh;
+				plot.init(-1,1,-1,1); // plot limits
+				// Create axes
+				plot.ax=plot.Line(2*plot.x1-plot.x2,0,2*plot.x2-plot.x1,0,"#777",1);
+				plot.ay=plot.Line(0,2*plot.y1-plot.y2,0,2*plot.y2-plot.y1,"#777",1);
+				// Create a transparent overlay for detecting mousedown
+				rect=g.Rect(0,0,gw,gh,"transparent","transparent",0);
+				rect.onmousedown = function(evt) { // mouse down initiates dragging
+					evt.preventDefault(); // prevent the default svg dragging
+					var e = evt.target.previousSibling;
+					e.c10=evt.clientX; e.c20=evt.clientY;
+					moving=e;
+				};
+				// Add scrolling management
+				rect.addEventListener("mousemove", mouseMove, false);
+				rect.addEventListener("mouseup", mouseUp, false);
+				// Add replotting management after scrolling
+				plot.update = function() {
+					this.x1=-this.t1/this.s1; this.x2=this.w/this.s1+this.x1;
+					this.y2=-this.t2/this.s2; this.y1=this.h/this.s2+this.y2;
+					this.ax.setAttribute("x1",""+(2*this.x1-this.x2));
+					this.ax.setAttribute("x2",""+(2*this.x2-this.x1));
+					this.ay.setAttribute("y1",""+(-(2*this.y1-this.y2)*this.AR));
+					this.ay.setAttribute("y2",""+(-(2*this.y2-this.y1)*this.AR));
+				};
+				plot.Rect(.3,.8,0.1,0.1,"black","red",0);
 				return;
 			}
 			
