@@ -104,31 +104,32 @@
 	};
 	
 	// Functions controling the SVG plot
-	SVGGElement.prototype.init = function(x1,x2,y1,y2) { // Define plot limits and scalings
+	SVGGElement.prototype.init = function(x1,x2,y1,y2,w,h) { // Define plot limits and scalings
 		this.x1=x1; this.x2=x2; this.y1=y1; this.y2=y2;
-		this.s1=this.w/(x2-x1); this.s2=this.h/(y1-y2); // scalings
-		this.AR=-this.s2/this.s1; // aspect ratio
-		this.t1=-x1*this.s1; this.t2=-y2*this.s2; // translations
-		this.setAttribute("transform","matrix("+this.s1+",0,0,"+this.s1+","+this.t1+","+this.t2+")");
+		this.b=[w,h]; // box size
+		this.s=[w/(x2-x1), h/(y1-y2)]; // scalings
+		this.t=[-x1*this.s[0], -y2*this.s[1]]; // translations
+		this.setAttribute("transform","matrix("+this.s[0]+",0,0,"+this.s[0]+","+this.t[0]+","+this.t[1]+")");
 		//this.root=this; //defined as "root" plot.
 
 		// Create axes
 		this.ax=this.Line(0,0,0,0,"#777",1);
 		this.ay=this.Line(0,0,0,0,"#777",1);
 		// Create ticks
-		this.ticks=[this.Group(), this.Group()];
-		this.nt=[24, 12]; // approximate number of ticks
+		this.ticks=[this.Group(), this.Group()]; // x and y
+		this.nt=[22, 16]; // approximate number of ticks
 		for(i=0; i<2*this.nt[0]; i+=1) { this.ticks[0].Line(0,0,0,0,"#777",0); }
 		for(i=0; i<2*this.nt[1]; i+=1) { this.ticks[1].Line(0,0,0,0,"#777",0); }
 		// Create tick labels with an optional "tspan" for powers
 		this.tickL=[this.Group(), this.Group()];
-		for(i=0; i<2*this.nt[0]; i+=1) { this.tickL[0].Text(" ",0,0,undefined,"#777",'NC').Tspan("",-5/this.s1); }
-		for(i=0; i<2*this.nt[1]; i+=1) { this.tickL[1].Text(" ",0,0,undefined,"#777",'MW').Tspan("",-5/this.s1); }
+		for(i=0; i<2*this.nt[0]; i+=1) { this.tickL[0].Text(" ",0,0,undefined,"#777",'NC').Tspan("",-5/this.s[0]); }
+		for(i=0; i<2*this.nt[1]; i+=1) { this.tickL[1].Text(" ",0,0,undefined,"#777",'MW').Tspan("",-5/this.s[0]); }
 		
 		// Add replotting management after scrolling
 		this.update = function() {
-			this.x1=-this.t1/this.s1; this.x2=this.w/this.s1+this.x1;
-			this.y2=-this.t2/this.s2; this.y1=this.h/this.s2+this.y2;
+			this.AR=-this.s[1]/this.s[0]; // aspect ratio
+			this.x1=-this.t[0]/this.s[0]; this.x2=this.b[0]/this.s[0]+this.x1;
+			this.y2=-this.t[1]/this.s[1]; this.y1=this.b[1]/this.s[1]+this.y2;
 			var m=[2*this.x1-this.x2, 2*this.y1-this.y2]
 			var M=[2*this.x2-this.x1, 2*this.y2-this.y1];
 			// Update axes
@@ -136,19 +137,22 @@
 			this.ay.sets({"y1":""+(-m[1]*this.AR), "y2":""+(-M[1]*this.AR)});
 			
 			// Update tick label font size
-			var fs = (12/this.s1)+"px";
+			var fs = (12/this.s[0])+"px";
 			this.tickL[0].setAttribute("font-size",fs);
 			this.tickL[1].setAttribute("font-size",fs);
 			// Update ticks and labels
-			var p,r,q,i,j,t,l,s,n,z1,z2,k,kk;
+			var p,r,q,i,j,t,l,s,n,z1,z2,k,kk,al;
+			al=['NC','MW']; zz=[1,1]; // tick label alignment
+			if(this.b[1]<2*this.t[1]) { al[0]='SC'; zz[1]=-1; } // reverse tick alignment if out of box
+			if(this.b[0]<2*this.t[0]) { al[1]='ME'; zz[0]=-1; }
 			for(k=0; k<2; k+=1) {
 				kk=(k+1)%2;
-				z1=[ (this.x2-this.x1)/200,-(this.y2-this.y1)/100];
+				z1=[ (this.x2-this.x1)/200,-(this.y2-this.y1)/100]; // small offsets for ticks
 				z2=[-(this.x2-this.x1)/200, (this.y2-this.y1)/100];
-				t = this.ticks[k].childNodes; l=this.tickL[k].childNodes;
+				t = this.ticks[k].childNodes; l=this.tickL[k].childNodes; // get all ticks
 				r=Math.pow(10.,ndec((M[k]-m[k])/this.nt[k])); q=(M[k]-m[k])/this.nt[k]/r;
-				q=Math.floor(Math.sqrt(1.5*(q-1))); q=(1+q*q)*r;
-				p=Math.max(ndec(m[k]),ndec(M[k])); r=Math.pow(10.,p);
+				q=Math.floor(Math.sqrt(1.5*(q-1))); q=(1+q*q)*r; // now q is tick separation
+				p=Math.max(ndec(m[k]),ndec(M[k]))-1; r=Math.pow(10.,p); // p is the power
 				i=0;
 				for(var z=m[k]-m[k]%q;z<M[k];z+=q) {
 					z1[k]=z; z2[k]=z;
@@ -156,11 +160,11 @@
 						"stroke-width":z?1:0});
 					s=""; n="";
 					if(z) {
-						if(p*p>9) { s=tickformat(z/r,q/r); s=(s=="1" ?"":(s=="-1"?"-":s+"·"))+"10"; n=""+p; }
+						if(p*p>9) { s=tickformat(z/r,q/r)+"·10"; n=""+p; }
 						else { s=tickformat(z,q); }
 					}
 					l[i].childNodes[0].textContent=s; l[i].childNodes[1].textContent=n;
-					l[i].move((1+k)*z1[0],-(2.5-1.5*k)*z1[1]*this.AR,['NC','MW'][k]);
+					l[i].move((kk+2*zz[0]*k)*z1[0],(-zz[1]*2.5*kk-k)*z1[1]*this.AR,al[k]);
 					i+=1;
 				}
 				for(j=i; j<this.nt[k]; j+=1) { //hide unused ticks
@@ -177,15 +181,23 @@
 	var moving=undefined;
 	function mouseMove(evt) {
 		if(!moving) return;
-		var x = evt.clientX-moving.c10+moving.t1;
-		var y = evt.clientY-moving.c20+moving.t2
-		moving.setAttribute("transform","matrix("+moving.s1+",0,0,"+moving.s1+","+x+","+y+")");
+		var x,u;
+		x = [evt.clientX-moving.c10+moving.t[0], evt.clientY-moving.c20+moving.t[1]];
+		// move the plot
+		moving.setAttribute("transform","matrix("+moving.s[0]+",0,0,"+moving.s[0]+","+x[0]+","+x[1]+")");
+		// make sure that the ticks don't move further than the plot box
+		u = 2*x[0]/moving.b[0]-1; u=u*(Math.min(1,1/Math.abs(u))-1)*moving.b[0]/2/moving.s[0];
+		moving.ticks[1].setAttribute("transform","translate("+u+",0)");
+		moving.tickL[1].setAttribute("transform","translate("+u+",0)");
+		u = 2*x[1]/moving.b[1]-1; u=u*(Math.min(1,1/Math.abs(u))-1)*moving.b[1]/2/moving.s[0];
+		moving.ticks[0].setAttribute("transform","translate(0,"+u+")");
+		moving.tickL[0].setAttribute("transform","translate(0,"+u+")");
 	}
 	function mouseUp(evt) {
 		if(!moving) return;
 		var e=moving; moving=undefined;
 		var t=e.getAttribute("transform").match(/[0-9.e+\-]+/g);
-		e.t1=parseFloat(t[4]); e.t2=parseFloat(t[5]);
+		e.t[0]=parseFloat(t[4]); e.t[1]=parseFloat(t[5]);
 		e.update();
 	}
 	
@@ -432,7 +444,7 @@
 	// HTML elements
 	var ein  = document.getElementById("in" );
 	var eout = document.getElementById("out");
-				document.addEventListener("mouseup", mouseUp, false);
+	document.addEventListener("mouseup", mouseUp, false);
 	
 	// Main callback, when Enter is pressed
 	function go(e) {
@@ -476,8 +488,8 @@
 				gw=gcont.clientWidth ; g.setAttribute("width" ,gw+"px");
 				gh=gcont.clientHeight; g.setAttribute("height",gh+"px");
 				// We create "plot" which groups all elements in the graph for easy scrolling
-				plot=g.Group(); plot.w=gw; plot.h=gh;
-				plot.init(-10000,10000,-10000,10000);
+				plot=g.Group();
+				plot.init(-100000,100000,-10000,10000,gw,gh);
 				// Create a transparent overlay for detecting mousedown
 				rect=g.Rect(0,0,gw,gh,"transparent","transparent",0);
 				rect.onmousedown = function(evt) { // mouse down initiates dragging
