@@ -120,11 +120,11 @@
 		this.ntx=24; this.nty=12; // approximate number of ticks
 		for(i=0; i<2*this.ntx; i+=1) { this.xticks.Line(0,0,0,0,"#777",0); }
 		for(i=0; i<2*this.nty; i+=1) { this.yticks.Line(0,0,0,0,"#777",0); }
-		// Create tick labels
+		// Create tick labels with an optional "tspan" for powers
 		this.xtickL=this.Group(); this.ytickL=this.Group();
-		for(i=0; i<2*this.ntx; i+=1) { this.xtickL.Text(" ",0,0,undefined,"#777",'NC'); }
-		for(i=0; i<2*this.nty; i+=1) { this.ytickL.Text(" ",0,0,undefined,"#777",'MW'); }
-
+		for(i=0; i<2*this.ntx; i+=1) { this.xtickL.Text(" ",0,0,undefined,"#777",'NC').Tspan("",-5/this.s1); }
+		for(i=0; i<2*this.nty; i+=1) { this.ytickL.Text(" ",0,0,undefined,"#777",'MW').Tspan("",-5/this.s1); }
+		
 		// Add replotting management after scrolling
 		this.update = function() {
 			this.x1=-this.t1/this.s1; this.x2=this.w/this.s1+this.x1;
@@ -134,55 +134,61 @@
 			// Update axes
 			this.ax.sets({"x1":""+xm, "x2":""+xM});
 			this.ay.sets({"y1":""+(-ym*this.AR), "y2":""+(-yM*this.AR)});
-			// Update x ticks and labels
-			var p,m,q,w,i,j,t,l,a, xl=(this.x2-this.x1)/200,  yl=(this.y2-this.y1)/100;
-			t = this.xticks.childNodes; l=this.xtickL.childNodes;
-			m=Math.pow(10.,ndec((xM-xm)/this.ntx)); q=(xM-xm)/this.ntx/m;
-			q=Math.floor(Math.sqrt(1.5*(q-1))); q=(1+q*q)*m;
-			p=ndec(xM); m=Math.pow(10.,p);
-			i=0;
-			for(var x=xm-xm%q;x<xM;x+=q) {
-				t[i].sets({"x1":""+x,"x2":""+x,"y1":""+( yl*this.AR),"y2":""+(-yl*this.AR),
-					"stroke-width":x?1:0});
-				if(x) {
-					if(p*p>9) { a=tickformat(x/m,q/m); }
-					else      { a=tickformat(x,q); }
-					l[i].textContent = ""+a;
-					if(p*p>9) { l[i].textContent+=" 10"; l[i].Tspan(""+p,-5/this.s1); }
-					l[i].move(x,3*yl*this.AR,'NC');
-				}
-				else { l[i].textContent = " "; }
-				i+=1;
-			}
-			for(j=i; j<this.ntx; j+=1) { t[j].setAttribute("stroke-width",0); } //hide unused ticks
-			// Update y ticks and labels
-			t = this.yticks.childNodes; l=this.ytickL.childNodes;
-			m=Math.pow(10.,ndec((yM-ym)/this.nty)); q=(yM-ym)/this.nty/m;
-			q=Math.floor(Math.sqrt(1.5*(q-1))); q=(1+q*q)*m;
-			p=ndec(yM); m=Math.pow(10.,p);
-			i=0;
-			for(var y=ym-ym%q;y<yM;y+=q) {
-				t[i].sets({"x1":""+xl,"x2":""+(-xl),"y1":""+(-y*this.AR),"y2":""+(-y*this.AR),
-					"stroke-width":y?1:0});
-				if(y) {
-					if(p*p>9) { a=tickformat(y/m,q/m); }
-					else      { a=tickformat(y,q); }
-					l[i].textContent = ""+a;
-					if(p*p>9) { l[i].textContent+=" 10"; l[i].Tspan(""+p,-5/this.s1); }
-					l[i].move(2*xl,-y*this.AR,'MW');
-				}
-				else { l[i].textContent = " "; }
-				i+=1;
-			}
-			for(j=i; j<this.nty; j+=1) { t[j].setAttribute("stroke-width",0); } //hide unused ticks
+			
+			// Update ticks and labels
+			var p,m,q,w,i,j,k,t,l,s,n, xl=(this.x2-this.x1)/200,  yl=(this.y2-this.y1)/100;
 			// Update tick label font size
 			var fs = (12/this.s1)+"px";
 			this.xtickL.setAttribute("font-size",fs);
 			this.ytickL.setAttribute("font-size",fs);
+			// X ticks
+			t = this.xticks.childNodes; l=this.xtickL.childNodes;
+			m=Math.pow(10.,ndec((xM-xm)/this.ntx)); q=(xM-xm)/this.ntx/m;
+			q=Math.floor(Math.sqrt(1.5*(q-1))); q=(1+q*q)*m;
+			p=Math.max(ndec(xm),ndec(xM)); m=Math.pow(10.,p);
+			i=0;
+			for(var x=xm-xm%q;x<xM;x+=q) {
+				t[i].sets({"x1":""+x,"x2":""+x,"y1":""+( yl*this.AR),"y2":""+(-yl*this.AR),
+					"stroke-width":x?1:0});
+				s=""; n="";
+				if(x) {
+					if(p*p>9) { s=tickformat(x/m,q/m); s=(s=="1" ?"":(s=="-1"?"-":s+"·"))+"10"; n=""+p; }
+					else { s=tickformat(x,q); }
+				}
+				l[i].childNodes[0].textContent=s; l[i].childNodes[1].textContent=n;
+				l[i].move(x,3*yl*this.AR,'NC');
+				i+=1;
+			}
+			for(j=i; j<this.ntx; j+=1) { //hide unused ticks
+				t[j].setAttribute("stroke-width",0);
+				l[i].childNodes[0].textContent=""; l[i].childNodes[1].textContent="";
+			}
+			// Y ticks
+			t = this.yticks.childNodes; l=this.ytickL.childNodes;
+			m=Math.pow(10.,ndec((yM-ym)/this.nty)); q=(yM-ym)/this.nty/m;
+			q=Math.floor(Math.sqrt(1.5*(q-1))); q=(1+q*q)*m;
+			p=Math.max(ndec(ym),ndec(yM)); m=Math.pow(10.,p);
+			i=0;
+			for(var y=ym-ym%q;y<yM;y+=q) {
+				t[i].sets({"x1":""+xl,"x2":""+(-xl),"y1":""+(-y*this.AR),"y2":""+(-y*this.AR),
+					"stroke-width":y?1:0});
+				s=""; n="";
+				if(y) {
+					if(p*p>9) {	s=tickformat(y/m,q/m); s=(s=="1"?"":(s=="-1"?"-":s+"·"))+"10"; n=""+p; }
+					else { s=tickformat(y,q); }
+				}
+				l[i].childNodes[0].textContent=s; l[i].childNodes[1].textContent=n;
+				l[i].move(2*xl,-y*this.AR,'MW');
+				i+=1;
+			}
+			for(j=i; j<this.nty; j+=1) {
+				t[j].setAttribute("stroke-width",0);
+				l[i].childNodes[0].textContent=""; l[i].childNodes[1].textContent="";
+			}
+
 		};
 		
-		this.update();
-		this.update(); // wierd bug in FF with text positionning needs twice
+		this.update(); // first drawing
 	}
 	
 	// Make SVG plot movable
@@ -202,7 +208,7 @@
 	}
 	
 	// number of decimal places
-	function ndec(num) {return Math.floor(Math.log(num)/Math.log(10)); }
+	function ndec(num) {return Math.floor(Math.log(Math.abs(num))/Math.log(10)); }
 
 	// Function for testing equal arrays (must not have subarrays)
 	function arrayequal(a,b) {
