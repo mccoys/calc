@@ -111,6 +111,78 @@
 		this.t1=-x1*this.s1; this.t2=-y2*this.s2; // translations
 		this.setAttribute("transform","matrix("+this.s1+",0,0,"+this.s1+","+this.t1+","+this.t2+")");
 		//this.root=this; //defined as "root" plot.
+
+		// Create axes
+		this.ax=this.Line(0,0,0,0,"#777",1);
+		this.ay=this.Line(0,0,0,0,"#777",1);
+		// Create ticks
+		this.xticks=this.Group(); this.yticks=this.Group();
+		this.ntx=24; this.nty=12; // approximate number of ticks
+		for(i=0; i<2*this.ntx; i+=1) { this.xticks.Line(0,0,0,0,"#777",0); }
+		for(i=0; i<2*this.nty; i+=1) { this.yticks.Line(0,0,0,0,"#777",0); }
+		// Create tick labels
+		this.xtickL=this.Group(); this.ytickL=this.Group();
+		for(i=0; i<2*this.ntx; i+=1) { this.xtickL.Text(" ",0,0,undefined,"#777",'NC'); }
+		for(i=0; i<2*this.nty; i+=1) { this.ytickL.Text(" ",0,0,undefined,"#777",'MW'); }
+
+		// Add replotting management after scrolling
+		this.update = function() {
+			this.x1=-this.t1/this.s1; this.x2=this.w/this.s1+this.x1;
+			this.y2=-this.t2/this.s2; this.y1=this.h/this.s2+this.y2;
+			var xm=2*this.x1-this.x2, xM=2*this.x2-this.x1;
+			var ym=2*this.y1-this.y2, yM=2*this.y2-this.y1;
+			// Update axes
+			this.ax.sets({"x1":""+xm, "x2":""+xM});
+			this.ay.sets({"y1":""+(-ym*this.AR), "y2":""+(-yM*this.AR)});
+			// Update x ticks and labels
+			var p,m,q,w,i,j,t,l,a, xl=(this.x2-this.x1)/200,  yl=(this.y2-this.y1)/100;
+			t = this.xticks.childNodes; l=this.xtickL.childNodes;
+			m=Math.pow(10.,ndec((xM-xm)/this.ntx)); q=(xM-xm)/this.ntx/m;
+			q=Math.floor(Math.sqrt(1.5*(q-1))); q=(1+q*q)*m;
+			p=ndec(xM); m=Math.pow(10.,p);
+			i=0;
+			for(var x=xm-xm%q;x<xM;x+=q) {
+				t[i].sets({"x1":""+x,"x2":""+x,"y1":""+( yl*this.AR),"y2":""+(-yl*this.AR),
+					"stroke-width":x?1:0});
+				if(x) {
+					if(p*p>9) { a=tickformat(x/m,q/m); }
+					else      { a=tickformat(x,q); }
+					l[i].textContent = ""+a;
+					if(p*p>9) { l[i].textContent+=" 10"; l[i].Tspan(""+p,-5/this.s1); }
+					l[i].move(x,3*yl*this.AR,'NC');
+				}
+				else { l[i].textContent = " "; }
+				i+=1;
+			}
+			for(j=i; j<this.ntx; j+=1) { t[j].setAttribute("stroke-width",0); } //hide unused ticks
+			// Update y ticks and labels
+			t = this.yticks.childNodes; l=this.ytickL.childNodes;
+			m=Math.pow(10.,ndec((yM-ym)/this.nty)); q=(yM-ym)/this.nty/m;
+			q=Math.floor(Math.sqrt(1.5*(q-1))); q=(1+q*q)*m;
+			p=ndec(yM); m=Math.pow(10.,p);
+			i=0;
+			for(var y=ym-ym%q;y<yM;y+=q) {
+				t[i].sets({"x1":""+xl,"x2":""+(-xl),"y1":""+(-y*this.AR),"y2":""+(-y*this.AR),
+					"stroke-width":y?1:0});
+				if(y) {
+					if(p*p>9) { a=tickformat(y/m,q/m); }
+					else      { a=tickformat(y,q); }
+					l[i].textContent = ""+a;
+					if(p*p>9) { l[i].textContent+=" 10"; l[i].Tspan(""+p,-5/this.s1); }
+					l[i].move(2*xl,-y*this.AR,'MW');
+				}
+				else { l[i].textContent = " "; }
+				i+=1;
+			}
+			for(j=i; j<this.nty; j+=1) { t[j].setAttribute("stroke-width",0); } //hide unused ticks
+			// Update tick label font size
+			var fs = (12/this.s1)+"px";
+			this.xtickL.setAttribute("font-size",fs);
+			this.ytickL.setAttribute("font-size",fs);
+		};
+		
+		this.update();
+		this.update(); // wierd bug in FF with text positionning needs twice
 	}
 	
 	// Make SVG plot movable
@@ -131,6 +203,27 @@
 	
 	// number of decimal places
 	function ndec(num) {return Math.floor(Math.log(num)/Math.log(10)); }
+
+	// Function for testing equal arrays (must not have subarrays)
+	function arrayequal(a,b) {
+		var na=a.length, nb=b.length;
+		if(na!=nb) {return false;}
+		for(var i=0;i<na;i+=1) {if(a[i]!=b[i]){return false;}}
+		return true;
+	}
+	
+	// Function to make tick labels nice
+	function tickformat(x,q) {
+		var l,z,zm=x+"",m=zm.length;
+		for(var y=0;y<=q;y+=q) {
+			z=(x+y).toExponential().split("e");
+			l = z[0].length-1;
+			if(l>14) { z[0]=eval(z[0].substring(0,l)).toFixed(10); }
+			z = (eval(z.join("e"))-y)+"";
+			if(z.length<m) {m=z.length; zm=z;}
+		}
+		return zm;
+	}
 
 -->
 </script>
@@ -353,27 +446,6 @@
 	var eout = document.getElementById("out");
 				document.addEventListener("mouseup", mouseUp, false);
 	
-	// Function for testing equal arrays (must not have subarrays)
-	function arrayequal(a,b) {
-		var na=a.length, nb=b.length;
-		if(na!=nb) {return false;}
-		for(var i=0;i<na;i+=1) {if(a[i]!=b[i]){return false;}}
-		return true;
-	}
-	
-	// Function to make tick labels nice
-	function tickformat(x,q) {
-		var l,z,zm=x+"",m=zm.length;
-		for(var y=0;y<=q;y+=q) {
-			z=(x+y).toExponential().split("e");
-			l = z[0].length-1;
-			if(l>14) { z[0]=eval(z[0].substring(0,l)).toFixed(10); }
-			z = (eval(z.join("e"))-y)+"";
-			if(z.length<m) {m=z.length; zm=z;}
-		}
-		return zm;
-	}
-
 	// Main callback, when Enter is pressed
 	function go(e) {
 		if(typeof(e)=='undefined' && window.event) { e=window.event; }
@@ -417,19 +489,7 @@
 				gh=gcont.clientHeight; g.setAttribute("height",gh+"px");
 				// We create "plot" which groups all elements in the graph for easy scrolling
 				plot=g.Group(); plot.w=gw; plot.h=gh;
-				plot.init(-10000,10000,-10000,10000); // plot limits
-				// Create axes
-				plot.ax=plot.Line(0,0,0,0,"#777",1);
-				plot.ay=plot.Line(0,0,0,0,"#777",1);
-				// Create ticks
-				plot.xticks=plot.Group(); plot.yticks=plot.Group();
-				plot.ntx=24; plot.nty=12; // approximate number of ticks
-				for(i=0; i<2*plot.ntx; i+=1) { plot.xticks.Line(0,0,0,0,"#777",0); }
-				for(i=0; i<2*plot.nty; i+=1) { plot.yticks.Line(0,0,0,0,"#777",0); }
-				// Create tick labels
-				plot.xtickL=plot.Group(); plot.ytickL=plot.Group();
-				for(i=0; i<2*plot.ntx; i+=1) { plot.xtickL.Text(" ",0,0,undefined,"#777",'NC'); }
-				for(i=0; i<2*plot.nty; i+=1) { plot.ytickL.Text(" ",0,0,undefined,"#777",'MW'); }
+				plot.init(-10000,10000,-10000,10000);
 				// Create a transparent overlay for detecting mousedown
 				rect=g.Rect(0,0,gw,gh,"transparent","transparent",0);
 				rect.onmousedown = function(evt) { // mouse down initiates dragging
@@ -438,65 +498,7 @@
 					e.c10=evt.clientX; e.c20=evt.clientY; // initial coordinates
 					moving=e;
 				};
-				// Add scrolling management
 				rect.addEventListener("mousemove", mouseMove, false);
-				// Add replotting management after scrolling
-				plot.update = function() {
-					this.x1=-this.t1/this.s1; this.x2=this.w/this.s1+this.x1;
-					this.y2=-this.t2/this.s2; this.y1=this.h/this.s2+this.y2;
-					var xm=2*this.x1-this.x2, xM=2*this.x2-this.x1;
-					var ym=2*this.y1-this.y2, yM=2*this.y2-this.y1;
-					// Update axes
-					this.ax.sets({"x1":""+xm, "x2":""+xM});
-					this.ay.sets({"y1":""+(-ym*this.AR), "y2":""+(-yM*this.AR)});
-					// Update x ticks and labels
-					var p,m,q,w,i,j,t,l,a, xl=(this.x2-this.x1)/200,  yl=(this.y2-this.y1)/100;
-					t = this.xticks.childNodes; l=this.xtickL.childNodes;
-					m=Math.pow(10.,ndec((xM-xm)/this.ntx)); q=(xM-xm)/this.ntx/m;
-					q=Math.floor(Math.sqrt(1.5*(q-1))); q=(1+q*q)*m;
-					p=ndec(xM); m=Math.pow(10.,p);
-					i=0;
-					for(var x=xm-xm%q;x<xM;x+=q) {
-						t[i].sets({"x1":""+x,"x2":""+x,"y1":""+( yl*this.AR),"y2":""+(-yl*this.AR),
-							"stroke-width":x?1:0});
-						if(x) {
-							if(p*p>9) { a=tickformat(x/m,q/m); }
-							else      { a=tickformat(x,q); }
-							l[i].textContent = ""+a;
-							if(p*p>9) { l[i].textContent+=" 10"; l[i].Tspan(""+p,-5/this.s1); }
-							l[i].move(x,3*yl*this.AR,'NC');
-						}
-						else { l[i].textContent = " "; }
-						i+=1;
-					}
-					for(j=i; j<this.ntx; j+=1) { t[j].setAttribute("stroke-width",0); } //hide unused ticks
-					// Update y ticks and labels
-					t = this.yticks.childNodes; l=this.ytickL.childNodes;
-					m=Math.pow(10.,ndec((yM-ym)/this.nty)); q=(yM-ym)/this.nty/m;
-					q=Math.floor(Math.sqrt(1.5*(q-1))); q=(1+q*q)*m;
-					p=ndec(yM); m=Math.pow(10.,p);
-					i=0;
-					for(var y=ym-ym%q;y<yM;y+=q) {
-						t[i].sets({"x1":""+xl,"x2":""+(-xl),"y1":""+(-y*this.AR),"y2":""+(-y*this.AR),
-							"stroke-width":y?1:0});
-						if(y) {
-							if(p*p>9) { a=tickformat(y/m,q/m); }
-							else      { a=tickformat(y,q); }
-							l[i].textContent = ""+a;
-							if(p*p>9) { l[i].textContent+=" 10"; l[i].Tspan(""+p,-5/this.s1); }
-							l[i].move(2*xl,-y*this.AR,'MW');
-						}
-						else { l[i].textContent = " "; }
-						i+=1;
-					}
-					for(j=i; j<this.nty; j+=1) { t[j].setAttribute("stroke-width",0); } //hide unused ticks
-					// Update tick label font size
-					var fs = (12/this.s1)+"px";
-					plot.xtickL.setAttribute("font-size",fs);
-					plot.ytickL.setAttribute("font-size",fs);
-				};
-				plot.update();
-				plot.update(); // wierd bug in FF with text positionning needs twice
 				return;
 			}
 			
