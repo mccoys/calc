@@ -34,7 +34,7 @@
 	.t td:nth-child(2) { width:100px; text-align:center; }
 	.t td:nth-child(3) { width:250px; text-align:left; }
 	.graphcont{ width:600px; height:300px; padding:0;
-		margin:0 auto; border:1px solid #dddddd;}
+		margin:0 auto; border:1px solid #dddddd; position:relative}
 	
 -->
 </style>
@@ -78,8 +78,8 @@
 	SVGElement.prototype.Text = function(str,x,y,fontsize,color,align,rot) {
 		var t=document.createElementNS(svgns,"text");
 		//if(this.root) { e.root=this.root; y*=e.root.AR;} // aspect ratio
-		t.sets({"x":x,"y":y,"fill":color});
-		if(fontsize) { t.setAttribute("font-size",fontsize+"px"); }
+		t.sets({"x":x+"","y":y+"","fill":color});
+		if(fontsize) { t.setAttribute("font-size",fontsize+""); }
 		t.textContent = str;
 		this.appendChild(t);
 		t.move(x,y,align,rot);
@@ -95,14 +95,22 @@
 		// Now rotate
 		if (rot==undefined) { rot=""; }
 		if (rot.length>0) { this.setAttribute("transform","rotate("+rot+","+x+","+y+")"); }
-	}
+	};
 	SVGTextElement.prototype.Tspan = function(str,dy) {
 		var t=document.createElementNS(svgns,"tspan");
 		t.setAttribute("dy",dy);
 		t.textContent = str;
 		return this.appendChild(t);
 	};
-	
+	SVGElement.prototype.ZoomButton = function(x,y,w,h) {
+ 		var zoom=this.Group();
+ 		zoom.Rect(x,y,w,h,"#eee","#ccc",1);
+ 		zoom.plot=this.firstChild;
+ 		zoom.onmousedown=zoomBegin;
+ 		zoom.setAttribute("cursor","pointer");
+ 		return zoom;
+ 	};
+ 	
 	// Functions controling the SVG plot
 	SVGGElement.prototype.init = function(x1,x2,y1,y2,w,h) { // Define plot limits and scalings
 		this.x1=x1; this.x2=x2; this.y1=y1; this.y2=y2;
@@ -137,7 +145,7 @@
 			this.ay.sets({"y1":""+(-m[1]*this.AR), "y2":""+(-M[1]*this.AR)});
 			
 			// Update tick label font size
-			var fs = (12/this.s[0])+"px";
+			var fs = (12/this.s[0])+"";
 			this.tickL[0].setAttribute("font-size",fs);
 			this.tickL[1].setAttribute("font-size",fs);
 			// Update ticks and labels
@@ -160,16 +168,19 @@
 						"stroke-width":z?1:0});
 					s=""; n="";
 					if(z) {
-						if(p*p>9) { s=tickformat(z/r,q/r)+"·10"; n=""+p; }
-						else { s=tickformat(z,q); }
+						if(p*p>9) {
+							s=tickformat(z/r,q/r)+"·10"; n=""+p;
+							l[i].childNodes[1].setAttribute("dy",-5/this.s[0]);
+						} else { s=tickformat(z,q); }
 					}
-					l[i].childNodes[0].textContent=s; l[i].childNodes[1].textContent=n;
+					l[i].childNodes[0].textContent=s;
+					l[i].childNodes[1].textContent=n;
 					l[i].move((kk+2*zz[0]*k)*z1[0],(-zz[1]*2.5*kk-k)*z1[1]*this.AR,al[k]);
 					i+=1;
 				}
-				for(j=i; j<this.nt[k]; j+=1) { //hide unused ticks
+				for(j=i; j<2*this.nt[k]; j+=1) { //hide unused ticks
 					t[j].setAttribute("stroke-width",0);
-					l[i].childNodes[0].textContent=""; l[i].childNodes[1].textContent="";
+					l[j].childNodes[0].textContent=""; l[j].childNodes[1].textContent="";
 				}
 			}
 		};
@@ -179,7 +190,13 @@
 	
 	// Make SVG plot movable
 	var moving=undefined;
-	function mouseMove(evt) {
+	function moveBegin(evt) {
+		evt.preventDefault(); // prevent the default svg dragging
+		document.onmouseup=moveEnd;
+		moving = evt.target.parentNode.firstChild; // e is plot
+		moving.c10=evt.clientX; moving.c20=evt.clientY; // initial coordinates
+	}
+	function moveContinue(evt) {
 		if(!moving) return;
 		var x,u;
 		x = [evt.clientX-moving.c10+moving.t[0], evt.clientY-moving.c20+moving.t[1]];
@@ -193,12 +210,41 @@
 		moving.ticks[0].setAttribute("transform","translate(0,"+u+")");
 		moving.tickL[0].setAttribute("transform","translate(0,"+u+")");
 	}
-	function mouseUp(evt) {
+	function moveEnd(evt) {
+		document.onmouseup=null;
 		if(!moving) return;
 		var e=moving; moving=undefined;
 		var t=e.getAttribute("transform").match(/[0-9.e+\-]+/g);
 		e.t[0]=parseFloat(t[4]); e.t[1]=parseFloat(t[5]);
 		e.update();
+	}
+	
+	// Make SVG plot zoomable
+	var zooming=undefined, zoomtimer=undefined;
+	function zoomBegin(evt) {
+		evt.preventDefault(); // prevent the default svg dragging
+		document.onmouseup=zoomEnd;
+		zooming=evt.target.parentNode;
+		zooming.firstChild.setAttribute("fill","#ddd");
+		setTimeout(zoomContinue, 50);
+	}
+	function zoomContinue() {
+		if(!zooming) return; 
+		var plot=zooming.plot;
+		switch(zooming.zoom) {
+			case 1: plot.s[0]*=1.1; plot.s[1]*=1.1; break;
+			case 2: plot.s[0]/=1.1; plot.s[1]/=1.1; break;
+		}
+		plot.setAttribute("transform","matrix("+plot.s[0]+",0,0,"+plot.s[0]+","+plot.t[0]+","+plot.t[1]+")");
+		plot.update();
+		setTimeout(zoomContinue, 50);
+	}
+	function zoomEnd(evt) {
+		//if(zoomtimer) {clearInterval(zoomtimer);}
+		document.onmouseup=null;
+		if(!zooming) return;
+		var e=zooming; zooming=undefined;
+		e.firstChild.setAttribute("fill","#eee");
 	}
 	
 	// number of decimal places
@@ -444,7 +490,6 @@
 	// HTML elements
 	var ein  = document.getElementById("in" );
 	var eout = document.getElementById("out");
-	document.addEventListener("mouseup", mouseUp, false);
 	
 	// Main callback, when Enter is pressed
 	function go(e) {
@@ -465,7 +510,7 @@
 		
 		var sin=ein.value, sout ="", varout=[], varname,
 			i,j,k,l,u,v,us,newu,newu0,s,ss,sss,tm,tp,ok,
-			gcont,g,gw,gh,lx,ly;
+			gcont,g,gw,gh,plot,rect,zoom,lx,ly;
 		
 		// wrong characters
 		var err=sin.replace(re_err,'');
@@ -492,13 +537,17 @@
 				plot.init(-100000,100000,-10000,10000,gw,gh);
 				// Create a transparent overlay for detecting mousedown
 				rect=g.Rect(0,0,gw,gh,"transparent","transparent",0);
-				rect.onmousedown = function(evt) { // mouse down initiates dragging
-					evt.preventDefault(); // prevent the default svg dragging
-					var e = evt.target.previousSibling; // e is plot
-					e.c10=evt.clientX; e.c20=evt.clientY; // initial coordinates
-					moving=e;
-				};
-				rect.addEventListener("mousemove", mouseMove, false);
+				rect.onmousedown = moveBegin;
+				rect.addEventListener("mousemove", moveContinue, false);
+				// Create zoom buttons
+				var x=10,y=10,w=14,h=14;
+ 				zoom=g.ZoomButton(x,y,w,h);
+ 				zoom.Line(x+w/2,y+h/5,x+w/2,y+4*h/5,"#777",1.5);
+ 				zoom.Line(x+w/5,y+h/2,x+4*w/5,y+h/2,"#777",1.5);
+ 				zoom.zoom=1;
+ 				zoom=g.ZoomButton(x,y+h,w,h);
+ 				zoom.Line(x+w/5,y+h/2+h,x+4*w/5,y+h/2+h,"#777",1.5);
+ 				zoom.zoom=2;
 				return;
 			}
 			
