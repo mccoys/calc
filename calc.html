@@ -102,13 +102,15 @@
 		t.textContent = str;
 		return this.appendChild(t);
 	};
-	SVGElement.prototype.ZoomButton = function(x,y,w,h) {
+	SVGElement.prototype.ZoomButton = function(x,y,w,h,type) {
  		var zoom=this.Group();
  		zoom.Rect(x,y,w,h,"#eee","#ccc",1);
  		zoom.plot=this.firstChild;
  		zoom.onmousedown=zoomBegin;
  		zoom.setAttribute("cursor","pointer");
- 		return zoom;
+ 		if(type=="+") {zoom.Line(x+w/2,y+h/5,x+w/2,y+4*h/5,"#777",1.5);}
+ 		zoom.Line(x+w/5,y+h/2,x+4*w/5,y+h/2,"#777",1.5);
+  		return zoom;
  	};
  	
 	// Functions controling the SVG plot
@@ -231,10 +233,10 @@
 	function zoomContinue() {
 		if(!zooming) return; 
 		var plot=zooming.plot;
-		switch(zooming.zoom) {
-			case 1: plot.s[0]*=1.1; plot.s[1]*=1.1; break;
-			case 2: plot.s[0]/=1.1; plot.s[1]/=1.1; break;
-		}
+		plot.s[0]*=zooming.z[0];
+		plot.s[1]*=zooming.z[1];
+		plot.t[0]=plot.b[0]/2-zooming.z[0]*(plot.b[0]/2-plot.t[0]);
+		plot.t[1]=plot.b[1]/2-zooming.z[1]*(plot.b[1]/2-plot.t[1]);
 		plot.setAttribute("transform","matrix("+plot.s[0]+",0,0,"+plot.s[0]+","+plot.t[0]+","+plot.t[1]+")");
 		plot.update();
 		setTimeout(zoomContinue, 50);
@@ -540,14 +542,15 @@
 				rect.onmousedown = moveBegin;
 				rect.addEventListener("mousemove", moveContinue, false);
 				// Create zoom buttons
-				var x=10,y=10,w=14,h=14;
- 				zoom=g.ZoomButton(x,y,w,h);
- 				zoom.Line(x+w/2,y+h/5,x+w/2,y+4*h/5,"#777",1.5);
- 				zoom.Line(x+w/5,y+h/2,x+4*w/5,y+h/2,"#777",1.5);
- 				zoom.zoom=1;
- 				zoom=g.ZoomButton(x,y+h,w,h);
- 				zoom.Line(x+w/5,y+h/2+h,x+4*w/5,y+h/2+h,"#777",1.5);
- 				zoom.zoom=2;
+				var x=5,y=5,w=14,h=14;
+ 				g.ZoomButton(x,y,w,h,"+").z=[1.1,1.1];
+ 				g.ZoomButton(x,y+h,w,h,"-").z=[1/1.1,1/1.1];
+ 				x+=w*2; w*=2/3; h*=2/3;
+ 				g.ZoomButton(x,y,w,h,"+").z=[1,1.1];
+ 				g.ZoomButton(x,y+2*h,w,h,"-").z=[1,1/1.1];
+ 				x-=w; y+=h;
+ 				g.ZoomButton(x+2*w,y,w,h,"+").z=[1.1,1];
+ 				g.ZoomButton(x,y,w,h,"-").z=[1/1.1,1];
 				return;
 			}
 			
