@@ -130,10 +130,16 @@
 		this.nt=[22, 16]; // approximate number of ticks
 		for(i=0; i<2*this.nt[0]; i+=1) { this.ticks[0].Line(0,0,0,0,"#777",0); }
 		for(i=0; i<2*this.nt[1]; i+=1) { this.ticks[1].Line(0,0,0,0,"#777",0); }
-		// Create tick labels with an optional "tspan" for powers
-		this.tickL=[this.Group(), this.Group()];
-		for(i=0; i<2*this.nt[0]; i+=1) { this.tickL[0].Text(" ",0,0,undefined,"#777",'NC').Tspan("",-5/this.s[0]); }
-		for(i=0; i<2*this.nt[1]; i+=1) { this.tickL[1].Text(" ",0,0,undefined,"#777",'MW').Tspan("",-5/this.s[0]); }
+		// Create tick labels with an optional "tspan" for powers.
+		// They are not in "this", because we don't want the font to scale.
+		this.overlay=this.parentNode.Group();
+		this.overlay.setAttribute("transform","matrix(1,0,0,1,"+this.t[0]+","+this.t[1]+")");
+		this.tickL=[this.overlay.Group(), this.overlay.Group()];
+		for(i=0; i<2*this.nt[0]; i+=1) { this.tickL[0].Text(" ",0,0,undefined,"#777",'NC').Tspan("",-5/this.s[0]).setAttribute("dy",-5); }
+		for(i=0; i<2*this.nt[1]; i+=1) { this.tickL[1].Text(" ",0,0,undefined,"#777",'MW').Tspan("",-5/this.s[0]).setAttribute("dy",-5); }
+		// Create curve
+		this.curve=this.Polyline([0,0],"#4bb",2);
+		this.np=1000;
 		
 		// Add replotting management after scrolling
 		this.update = function() {
@@ -145,9 +151,8 @@
 			// Update axes
 			this.ax.sets({"x1":""+m[0], "x2":""+M[0]});
 			this.ay.sets({"y1":""+(-m[1]*this.AR), "y2":""+(-M[1]*this.AR)});
-			
 			// Update tick label font size
-			var fs = (12/this.s[0])+"";
+			var fs = "12";
 			this.tickL[0].setAttribute("font-size",fs);
 			this.tickL[1].setAttribute("font-size",fs);
 			// Update ticks and labels
@@ -160,24 +165,30 @@
 				z1=[ (this.x2-this.x1)/200,-(this.y2-this.y1)/100]; // small offsets for ticks
 				z2=[-(this.x2-this.x1)/200, (this.y2-this.y1)/100];
 				t = this.ticks[k].childNodes; l=this.tickL[k].childNodes; // get all ticks
-				r=Math.pow(10.,ndec((M[k]-m[k])/this.nt[k])); q=(M[k]-m[k])/this.nt[k]/r;
-				q=Math.floor(Math.sqrt(1.5*(q-1))); q=(1+q*q)*r; // now q is tick separation
+				p=(M[k]-m[k])/this.nt[k]; r=Math.pow(10.,ndec(p));
+				q=Math.floor(Math.sqrt(1.5*(p/r-1))); q=(1+q*q)*r; // now q is tick separation
 				p=Math.max(ndec(m[k]),ndec(M[k]))-1; r=Math.pow(10.,p); // p is the power
 				i=0;
-				for(var z=m[k]-m[k]%q;z<M[k];z+=q) {
+				for(var z=m[k]-m[k]%q;z<M[k];z+=q) { // for each tick position
 					z1[k]=z; z2[k]=z;
 					t[i].sets({"x1":""+z1[0],"x2":""+z2[0],"y1":""+(-z1[1]*this.AR),"y2":""+(-z2[1]*this.AR),
 						"stroke-width":z?1:0});
 					s=""; n="";
-					if(z) {
-						if(p*p>9) {
-							s=tickformat(z/r,q/r)+"·10"; n=""+p;
-							l[i].childNodes[1].setAttribute("dy",-5/this.s[0]);
-						} else { s=tickformat(z,q); }
+					if(p*p>9) { // if too long number, display with power of 10
+							s=tickformat(z/r,q/r);
+							switch(s) {
+								case "0": s=""; break;
+								case "1": s="10"; n=""+p; break;
+								case "-1": s="-10"; n=""+p; break;
+								default: s+="·10";""; n=""+p;
+							}
+					} else { 
+						s=tickformat(z,q);
+						if(s=="0") { s=""; }
 					}
 					l[i].childNodes[0].textContent=s;
 					l[i].childNodes[1].textContent=n;
-					l[i].move((kk+2*zz[0]*k)*z1[0],(-zz[1]*2.5*kk-k)*z1[1]*this.AR,al[k]);
+					l[i].move((kk+2*zz[0]*k)*z1[0]*this.s[0],-(-zz[1]*2.5*kk-k)*z1[1]*this.s[1],al[k]);
 					i+=1;
 				}
 				for(j=i; j<2*this.nt[k]; j+=1) { //hide unused ticks
@@ -185,6 +196,15 @@
 					l[j].childNodes[0].textContent=""; l[j].childNodes[1].textContent="";
 				}
 			}
+			// Update curve
+			l=(M[0]-m[0])/this.np;
+			var points=new Array(2*this.np);
+			i=0;
+			for(z=m[0]; z<M[0]; z+=l) {
+				points[i*2]=z; points[i*2+1]=-Math.min(Math.max( eval(this.curveEq.join(z+"")) ,m[1]),M[1])*this.AR;
+				i+=1;
+			}
+			this.curve.setAttribute("points",points);
 		};
 		
 		this.update(); // first drawing
@@ -197,6 +217,7 @@
 		document.onmouseup=moveEnd;
 		moving = evt.target.parentNode.firstChild; // e is plot
 		moving.c10=evt.clientX; moving.c20=evt.clientY; // initial coordinates
+		evt.target.addEventListener("mousemove", moveContinue, false);
 	}
 	function moveContinue(evt) {
 		if(!moving) return;
@@ -204,12 +225,13 @@
 		x = [evt.clientX-moving.c10+moving.t[0], evt.clientY-moving.c20+moving.t[1]];
 		// move the plot
 		moving.setAttribute("transform","matrix("+moving.s[0]+",0,0,"+moving.s[0]+","+x[0]+","+x[1]+")");
+		moving.overlay.setAttribute("transform","matrix(1,0,0,1,"+x[0]+","+x[1]+")");
 		// make sure that the ticks don't move further than the plot box
-		u = 2*x[0]/moving.b[0]-1; u=u*(Math.min(1,1/Math.abs(u))-1)*moving.b[0]/2/moving.s[0];
-		moving.ticks[1].setAttribute("transform","translate("+u+",0)");
+		u = 2*x[0]/moving.b[0]-1; u=u*(Math.min(1,1/Math.abs(u))-1)*moving.b[0]/2;
+		moving.ticks[1].setAttribute("transform","translate("+(u/moving.s[0])+",0)");
 		moving.tickL[1].setAttribute("transform","translate("+u+",0)");
-		u = 2*x[1]/moving.b[1]-1; u=u*(Math.min(1,1/Math.abs(u))-1)*moving.b[1]/2/moving.s[0];
-		moving.ticks[0].setAttribute("transform","translate(0,"+u+")");
+		u = 2*x[1]/moving.b[1]-1; u=u*(Math.min(1,1/Math.abs(u))-1)*moving.b[1]/2;
+		moving.ticks[0].setAttribute("transform","translate(0,"+(u/moving.s[0])+")");
 		moving.tickL[0].setAttribute("transform","translate(0,"+u+")");
 	}
 	function moveEnd(evt) {
@@ -238,6 +260,7 @@
 		plot.t[0]=plot.b[0]/2-zooming.z[0]*(plot.b[0]/2-plot.t[0]);
 		plot.t[1]=plot.b[1]/2-zooming.z[1]*(plot.b[1]/2-plot.t[1]);
 		plot.setAttribute("transform","matrix("+plot.s[0]+",0,0,"+plot.s[0]+","+plot.t[0]+","+plot.t[1]+")");
+		plot.overlay.setAttribute("transform","matrix(1,0,0,1,"+plot.t[0]+","+plot.t[1]+")");
 		plot.update();
 		setTimeout(zoomContinue, 50);
 	}
@@ -272,6 +295,112 @@
 		}
 		return zm;
 	}
+
+-->
+</script>
+<script language="javascript">
+<!--
+
+	// constants
+	var co=[], re_co=[];
+	co.push('299792458. m*s^(-1)'); re_co.push(/(\W)c(?!\w)/g); // c
+	co.push('6.67384e-11 m^3*kg^(-1)*s^(-2)'); re_co.push(/(\W)G(?!\w)/g); // G
+	co.push('6.62606957e-34 J*s'); re_co.push(/(\W)h(?!\w)/g); // h
+	co.push('1.256637061e-6 N*A^(-2)'); re_co.push(/(\W)mu_?0(?!\w)/g); // mu0
+	co.push('8.854187817e-12 F*m^(-1)'); re_co.push(/(\W)e(?:ps)?_?0(?!\w)/g); // eps0
+	co.push('1.602176565e-19 C'); re_co.push(/([^\w\.])(?:q_?)?e(?!\w)/g); // q_e
+	co.push('5.2917721092e-11 m'); re_co.push(/(\W)a_?0(?!\w)/g); // a_0
+	co.push('2.8179403267e-15 m'); re_co.push(/(\W)r_?e(?!\w)/g); // r_e
+	co.push('9.10938291e-31 kg'); re_co.push(/(\W)m_?e(?!\w)/g); // m_e
+	co.push('1.672621777e-27 kg'); re_co.push(/(\W)m_?p(?!\w)/g); // m_p
+	co.push('6.02214129e23 mol^(-1)'); re_co.push(/(\W)N_?A(?!\w)/g); // N_A
+	co.push('1.3806488e-23 J*K^(-1)'); re_co.push(/(\W)k_?B(?!\w)/g); // k_B
+	co.push('3.141592653589793'); re_co.push(/(\W)pi(?!\w)/gi); // pi
+	co.push('7.2973525698e-3'); re_co.push(/(\W)alpha(?!\w)/g); // alpha
+	
+	// SI units or similar
+	var un=["m","kg","s","A","K","mol","cd","rad"];
+	var re_u1=[], re_u2=[], rf=[], ru=[];
+	re_u1.push(/[Mm]eters?$/);re_u2.push(/m$/); ru.push([1,0,0,0,0,0,0,0]); rf.push(1);
+	re_u1.push(/[Gg]rams?$/);   re_u2.push(/g$/); ru.push([0,1,0,0,0,0,0,0]); rf.push(1e-3);
+	re_u1.push(/[Ss]econds?$/); re_u2.push(/s$/); ru.push([0,0,1,0,0,0,0,0]); rf.push(1);
+	re_u1.push(/[Aa]mperes?$/); re_u2.push(/A$/); ru.push([0,0,0,1,0,0,0,0]); rf.push(1);
+	re_u1.push(/[Kk]elvins?$/); re_u2.push(/K$/); ru.push([0,0,0,0,1,0,0,0]); rf.push(1);
+	re_u1.push(/[Mm]oles?$/); re_u2.push(/mol$/); ru.push([0,0,0,0,0,1,0,0]); rf.push(1);
+	re_u1.push(/[Cc]andelas?$/); re_u2.push(/cd$/); ru.push([0,0,0,0,0,0,1,0]); rf.push(1);
+	re_u1.push(/[Rr]adians?$/); re_u2.push(/rad$/); ru.push([0,0,0,0,0,0,0,1]); rf.push(1);
+	re_u1.push(/[Hh]ertz$/);   re_u2.push(/Hz$/);ru.push([0,0,-1,0,0,0,0,0]); rf.push(1);
+	re_u1.push(/[Nn]ewtons?$/); re_u2.push(/N$/);ru.push([1,1,-2,0,0,0,0,0]); rf.push(1);
+	re_u1.push(/[Pp]ascals?$/);re_u2.push(/Pa$/);ru.push([-1,1,-2,0,0,0,0,0]); rf.push(1);
+	re_u1.push(/[Jj]oules?$/);  re_u2.push(/J$/);ru.push([2,1,-2,0,0,0,0,0]); rf.push(1);
+	re_u1.push(/[Ww]atts?$/);   re_u2.push(/W$/);ru.push([2,1,-3,0,0,0,0,0]); rf.push(1);
+	re_u1.push(/[Cc]oulombs?$/);re_u2.push(/C$/); ru.push([0,0,1,1,0,0,0,0]); rf.push(1);
+	re_u1.push(/[Vv]olts?$/);   re_u2.push(/V$/);ru.push([2,1,-3,-1,0,0,0,0]); rf.push(1);
+	re_u1.push(/[Ff]arads?$/);  re_u2.push(/F$/);ru.push([-2,-1,4,2,0,0,0,0]); rf.push(1);
+	re_u1.push(/[Oo]hms?$/);  re_u2.push(/ohm$/);ru.push([2,1,-3,-2,0,0,0,0]); rf.push(1);
+	re_u1.push(/[Ss]iemens$/);  re_u2.push(/S$/);ru.push([-2,-1,3,2,0,0,0,0]); rf.push(1);
+	re_u1.push(/[Ww]ebers?$/); re_u2.push(/Wb$/);ru.push([2,1,-2,-1,0,0,0,0]); rf.push(1);
+	re_u1.push(/[Tt]eslas?$/);  re_u2.push(/T$/);ru.push([0,1,-2,-1,0,0,0,0]); rf.push(1);
+	re_u1.push(/[Gg]auss$/);  re_u2.push(/ /);ru.push([0,1,-2,-1,0,0,0,0]); rf.push(1e-4);
+	re_u1.push(/[Hh]enrys?$/);  re_u2.push(/H$/);ru.push([2,1,-2,-2,0,0,0,0]); rf.push(1);
+	re_u1.push(/[Ll]itres?$/);re_u2.push(/[lL]$/);ru.push([3,0,0,0,0,0,0,0]); rf.push(1e-3);
+	re_u1.push(/[Tt]onnes?$/);  re_u2.push(/t$/); ru.push([0,1,0,0,0,0,0,0]); rf.push(1e3);
+	re_u1.push(/[Ee]lectron[Vv]olts?$/);re_u2.push(/eV$/);ru.push([2,1,-2,0,0,0,0,0]); rf.push(1.60217653e-19);
+	re_u1.push(/bars?$/);       re_u2.push(/bar$/);ru.push([-1,1,-2,0,0,0,0,0]); rf.push(1e5);
+	var nu=ru.length;
+	
+	// SI prefixes
+	var re_pr1=[], re_pr2=[], pr=[];
+	re_pr1.push(/^[Dd]eca$/); re_pr2.push(/^da$/); pr.push(1e1);
+	re_pr1.push(/^[Hh]ecto$/); re_pr2.push(/^h$/); pr.push(1e2);
+	re_pr1.push(/^[Kk]ilo$/); re_pr2.push(/^k$/); pr.push(1e3);
+	re_pr1.push(/^[Mm]ega$/); re_pr2.push(/^M$/); pr.push(1e6);
+	re_pr1.push(/^[Gg]iga$/); re_pr2.push(/^G$/); pr.push(1e9);
+	re_pr1.push(/^[Tt]era$/); re_pr2.push(/^T$/); pr.push(1e12);
+	re_pr1.push(/^[Pp]eta$/); re_pr2.push(/^P$/); pr.push(1e15);
+	re_pr1.push(/^[Ee]xa$/); re_pr2.push(/^E$/); pr.push(1e18);
+	re_pr1.push(/^[Zz]etta$/); re_pr2.push(/^Z$/); pr.push(1e21);
+	re_pr1.push(/^[Yy]otta$/); re_pr2.push(/^Y$/); pr.push(1e24);
+	re_pr1.push(/^[Dd]eci$/); re_pr2.push(/^d$/); pr.push(1e-1);
+	re_pr1.push(/^[Cc]enti$/); re_pr2.push(/^c$/); pr.push(1e-2);
+	re_pr1.push(/^[Mm]illi$/); re_pr2.push(/^m$/); pr.push(1e-3);
+	re_pr1.push(/^[Mm]icro$/); re_pr2.push(/^[µu]$/); pr.push(1e-6);
+	re_pr1.push(/^[Nn]ano$/); re_pr2.push(/^n$/); pr.push(1e-9);
+	re_pr1.push(/^[Pp]ico$/); re_pr2.push(/^p$/); pr.push(1e-12);
+	re_pr1.push(/^[Ff]emto$/); re_pr2.push(/^f$/); pr.push(1e-15);
+	re_pr1.push(/^[Aa]tto$/); re_pr2.push(/^a$/); pr.push(1e-18);
+	re_pr1.push(/^[Zz]epto$/); re_pr2.push(/^z$/); pr.push(1e-21);
+	re_pr1.push(/^[Yy]octo$/); re_pr2.push(/^y$/); pr.push(1e-24);
+	var npr=pr.length;
+	
+	// Other units
+	re_u1.push(/^[Hh]ectares?$|^ha$/); ru.push([2,0,0,0,0,0,0,0]); rf.push(1e4);
+	re_u1.push(/^[Aa]res?$|^a$/); ru.push([2,0,0,0,0,0,0,0]); rf.push(100);
+	re_u1.push(/^[Dd]egrees?$|^deg$/); ru.push([0,0,0,0,0,0,0,1]); rf.push(0.017453292519943295);
+	re_u1.push(/^[Mm]inutes?$|^min$/); ru.push([0,0,1,0,0,0,0,0]); rf.push(60);
+	re_u1.push(/^[Hh]ours?$/); ru.push([0,0,1,0,0,0,0,0]); rf.push(3600);
+	re_u1.push(/^[Dd]ays?$|^d/); ru.push([0,0,1,0,0,0,0,0]); rf.push(86400);
+	re_u1.push(/angstroms?$/); ru.push([1,0,0,0,0,0,0,0]); rf.push(1e-10);
+	re_u1.push(/^(?:am)?u$/); ru.push([0,1,0,0,0,0,0,0]); rf.push(1.66053886e-27);
+	re_u1.push(/^[Ii]nch(?:es)?$$/); ru.push([1,0,0,0,0,0,0,0]); rf.push(0.0254);
+	re_u1.push(/^[Ff]oot$|^[Ff]eet$/); ru.push([1,0,0,0,0,0,0,0]); rf.push(0.3048);
+	re_u1.push(/^[Yy]ards?$/); ru.push([1,0,0,0,0,0,0,0]); rf.push(0.9144);
+	re_u1.push(/^[Mm]iles?$|^mi$/); ru.push([1,0,0,0,0,0,0,0]); rf.push(1609.344);
+	re_u1.push(/^[Aa]cres?$/); ru.push([2,0,0,0,0,0,0,0]); rf.push(4046.8564224);
+	re_u1.push(/barns?$/); ru.push([2,0,0,0,0,0,0,0]); rf.push(1e-28);
+	re_u1.push(/^[Pp]arsecs?$/); ru.push([1,0,0,0,0,0,0,0]); rf.push(3.085677581491e+16);
+	re_u1.push(/^[Ll]ight-?[Yy]ears?$|^ly$/); ru.push([1,0,0,0,0,0,0,0]); rf.push(9460730472580800);
+	re_u1.push(/^[Ee]rgs?$/); ru.push([2,1,-2,0,0,0,0,0]); rf.push(1e-7);
+	re_u1.push(/^atmospheres?$|^atm$/); ru.push([-1,1,-2,0,0,0,0,0]); rf.push(100);
+	var nu1=ru.length;
+	
+	// other regular expressions
+	var re_err=/[ a-zA-Z0-9=;+\-^*_\/().]/g, re_in=/ in /, re_eq=/(.+)=/,
+		re_ep =/[Ee]\+?(?=[0-9])/g, re_em=/[Ee]-(?=[0-9])/g,
+		re_ep1=/#/g, re_em1=/@/g,
+		re_pm=/([^\^])-/g, re_s=/\s/g, re_ss=/\(\+/g, re_par=/^\s*\((.+)\)\s*$/g,
+		re_unit1=/([0-9\).])\s*([A-Za-z]+)/g,
+		re_unit2=/[A-Za-z]/, re_unit3=/([A-Za-z]+)/g;
 
 -->
 </script>
@@ -385,114 +514,14 @@
 		</div>
 	</div>
 </div>
+
 <script language="javascript">
 <!--
-
-	// constants
-	var co=[], re_co=[];
-	co.push('299792458. m*s^(-1)'); re_co.push(/(\W)c(?!\w)/g); // c
-	co.push('6.67384e-11 m^3*kg^(-1)*s^(-2)'); re_co.push(/(\W)G(?!\w)/g); // G
-	co.push('6.62606957e-34 J*s'); re_co.push(/(\W)h(?!\w)/g); // h
-	co.push('1.256637061e-6 N*A^(-2)'); re_co.push(/(\W)mu_?0(?!\w)/g); // mu0
-	co.push('8.854187817e-12 F*m^(-1)'); re_co.push(/(\W)e(?:ps)?_?0(?!\w)/g); // eps0
-	co.push('1.602176565e-19 C'); re_co.push(/([^\w\.])(?:q_?)?e(?!\w)/g); // q_e
-	co.push('5.2917721092e-11 m'); re_co.push(/(\W)a_?0(?!\w)/g); // a_0
-	co.push('2.8179403267e-15 m'); re_co.push(/(\W)r_?e(?!\w)/g); // r_e
-	co.push('9.10938291e-31 kg'); re_co.push(/(\W)m_?e(?!\w)/g); // m_e
-	co.push('1.672621777e-27 kg'); re_co.push(/(\W)m_?p(?!\w)/g); // m_p
-	co.push('6.02214129e23 mol^(-1)'); re_co.push(/(\W)N_?A(?!\w)/g); // N_A
-	co.push('1.3806488e-23 J*K^(-1)'); re_co.push(/(\W)k_?B(?!\w)/g); // k_B
-	co.push('3.141592653589793'); re_co.push(/(\W)pi(?!\w)/gi); // pi
-	co.push('7.2973525698e-3'); re_co.push(/(\W)alpha(?!\w)/g); // alpha
-	
-	// SI units or similar
-	var un=["m","kg","s","A","K","mol","cd","rad"];
-	var re_u1=[], re_u2=[], rf=[], ru=[];
-	re_u1.push(/[Mm]eters?$/);re_u2.push(/m$/); ru.push([1,0,0,0,0,0,0,0]); rf.push(1);
-	re_u1.push(/[Gg]rams?$/);   re_u2.push(/g$/); ru.push([0,1,0,0,0,0,0,0]); rf.push(1e-3);
-	re_u1.push(/[Ss]econds?$/); re_u2.push(/s$/); ru.push([0,0,1,0,0,0,0,0]); rf.push(1);
-	re_u1.push(/[Aa]mperes?$/); re_u2.push(/A$/); ru.push([0,0,0,1,0,0,0,0]); rf.push(1);
-	re_u1.push(/[Kk]elvins?$/); re_u2.push(/K$/); ru.push([0,0,0,0,1,0,0,0]); rf.push(1);
-	re_u1.push(/[Mm]oles?$/); re_u2.push(/mol$/); ru.push([0,0,0,0,0,1,0,0]); rf.push(1);
-	re_u1.push(/[Cc]andelas?$/); re_u2.push(/cd$/); ru.push([0,0,0,0,0,0,1,0]); rf.push(1);
-	re_u1.push(/[Rr]adians?$/); re_u2.push(/rad$/); ru.push([0,0,0,0,0,0,0,1]); rf.push(1);
-	re_u1.push(/[Hh]ertz$/);   re_u2.push(/Hz$/);ru.push([0,0,-1,0,0,0,0,0]); rf.push(1);
-	re_u1.push(/[Nn]ewtons?$/); re_u2.push(/N$/);ru.push([1,1,-2,0,0,0,0,0]); rf.push(1);
-	re_u1.push(/[Pp]ascals?$/);re_u2.push(/Pa$/);ru.push([-1,1,-2,0,0,0,0,0]); rf.push(1);
-	re_u1.push(/[Jj]oules?$/);  re_u2.push(/J$/);ru.push([2,1,-2,0,0,0,0,0]); rf.push(1);
-	re_u1.push(/[Ww]atts?$/);   re_u2.push(/W$/);ru.push([2,1,-3,0,0,0,0,0]); rf.push(1);
-	re_u1.push(/[Cc]oulombs?$/);re_u2.push(/C$/); ru.push([0,0,1,1,0,0,0,0]); rf.push(1);
-	re_u1.push(/[Vv]olts?$/);   re_u2.push(/V$/);ru.push([2,1,-3,-1,0,0,0,0]); rf.push(1);
-	re_u1.push(/[Ff]arads?$/);  re_u2.push(/F$/);ru.push([-2,-1,4,2,0,0,0,0]); rf.push(1);
-	re_u1.push(/[Oo]hms?$/);  re_u2.push(/ohm$/);ru.push([2,1,-3,-2,0,0,0,0]); rf.push(1);
-	re_u1.push(/[Ss]iemens$/);  re_u2.push(/S$/);ru.push([-2,-1,3,2,0,0,0,0]); rf.push(1);
-	re_u1.push(/[Ww]ebers?$/); re_u2.push(/Wb$/);ru.push([2,1,-2,-1,0,0,0,0]); rf.push(1);
-	re_u1.push(/[Tt]eslas?$/);  re_u2.push(/T$/);ru.push([0,1,-2,-1,0,0,0,0]); rf.push(1);
-	re_u1.push(/[Gg]auss$/);  re_u2.push(/ /);ru.push([0,1,-2,-1,0,0,0,0]); rf.push(1e-4);
-	re_u1.push(/[Hh]enrys?$/);  re_u2.push(/H$/);ru.push([2,1,-2,-2,0,0,0,0]); rf.push(1);
-	re_u1.push(/[Ll]itres?$/);re_u2.push(/[lL]$/);ru.push([3,0,0,0,0,0,0,0]); rf.push(1e-3);
-	re_u1.push(/[Tt]onnes?$/);  re_u2.push(/t$/); ru.push([0,1,0,0,0,0,0,0]); rf.push(1e3);
-	re_u1.push(/[Ee]lectron[Vv]olts?$/);re_u2.push(/eV$/);ru.push([2,1,-2,0,0,0,0,0]); rf.push(1.60217653e-19);
-	re_u1.push(/bars?$/);       re_u2.push(/bar$/);ru.push([-1,1,-2,0,0,0,0,0]); rf.push(1e5);
-	var nu=ru.length;
-	
-	// SI prefixes
-	var re_pr1=[], re_pr2=[], pr=[];
-	re_pr1.push(/^[Dd]eca$/); re_pr2.push(/^da$/); pr.push(1e1);
-	re_pr1.push(/^[Hh]ecto$/); re_pr2.push(/^h$/); pr.push(1e2);
-	re_pr1.push(/^[Kk]ilo$/); re_pr2.push(/^k$/); pr.push(1e3);
-	re_pr1.push(/^[Mm]ega$/); re_pr2.push(/^M$/); pr.push(1e6);
-	re_pr1.push(/^[Gg]iga$/); re_pr2.push(/^G$/); pr.push(1e9);
-	re_pr1.push(/^[Tt]era$/); re_pr2.push(/^T$/); pr.push(1e12);
-	re_pr1.push(/^[Pp]eta$/); re_pr2.push(/^P$/); pr.push(1e15);
-	re_pr1.push(/^[Ee]xa$/); re_pr2.push(/^E$/); pr.push(1e18);
-	re_pr1.push(/^[Zz]etta$/); re_pr2.push(/^Z$/); pr.push(1e21);
-	re_pr1.push(/^[Yy]otta$/); re_pr2.push(/^Y$/); pr.push(1e24);
-	re_pr1.push(/^[Dd]eci$/); re_pr2.push(/^d$/); pr.push(1e-1);
-	re_pr1.push(/^[Cc]enti$/); re_pr2.push(/^c$/); pr.push(1e-2);
-	re_pr1.push(/^[Mm]illi$/); re_pr2.push(/^m$/); pr.push(1e-3);
-	re_pr1.push(/^[Mm]icro$/); re_pr2.push(/^[µu]$/); pr.push(1e-6);
-	re_pr1.push(/^[Nn]ano$/); re_pr2.push(/^n$/); pr.push(1e-9);
-	re_pr1.push(/^[Pp]ico$/); re_pr2.push(/^p$/); pr.push(1e-12);
-	re_pr1.push(/^[Ff]emto$/); re_pr2.push(/^f$/); pr.push(1e-15);
-	re_pr1.push(/^[Aa]tto$/); re_pr2.push(/^a$/); pr.push(1e-18);
-	re_pr1.push(/^[Zz]epto$/); re_pr2.push(/^z$/); pr.push(1e-21);
-	re_pr1.push(/^[Yy]octo$/); re_pr2.push(/^y$/); pr.push(1e-24);
-	var npr=pr.length;
-	
-	// Other units
-	re_u1.push(/^[Hh]ectares?$|^ha$/); ru.push([2,0,0,0,0,0,0,0]); rf.push(1e4);
-	re_u1.push(/^[Aa]res?$|^a$/); ru.push([2,0,0,0,0,0,0,0]); rf.push(100);
-	re_u1.push(/^[Dd]egrees?$|^deg$/); ru.push([0,0,0,0,0,0,0,1]); rf.push(0.017453292519943295);
-	re_u1.push(/^[Mm]inutes?$|^min$/); ru.push([0,0,1,0,0,0,0,0]); rf.push(60);
-	re_u1.push(/^[Hh]ours?$/); ru.push([0,0,1,0,0,0,0,0]); rf.push(3600);
-	re_u1.push(/^[Dd]ays?$|^d/); ru.push([0,0,1,0,0,0,0,0]); rf.push(86400);
-	re_u1.push(/angstroms?$/); ru.push([1,0,0,0,0,0,0,0]); rf.push(1e-10);
-	re_u1.push(/^(?:am)?u$/); ru.push([0,1,0,0,0,0,0,0]); rf.push(1.66053886e-27);
-	re_u1.push(/^[Ii]nch(?:es)?$$/); ru.push([1,0,0,0,0,0,0,0]); rf.push(0.0254);
-	re_u1.push(/^[Ff]oot$|^[Ff]eet$/); ru.push([1,0,0,0,0,0,0,0]); rf.push(0.3048);
-	re_u1.push(/^[Yy]ards?$/); ru.push([1,0,0,0,0,0,0,0]); rf.push(0.9144);
-	re_u1.push(/^[Mm]iles?$|^mi$/); ru.push([1,0,0,0,0,0,0,0]); rf.push(1609.344);
-	re_u1.push(/^[Aa]cres?$/); ru.push([2,0,0,0,0,0,0,0]); rf.push(4046.8564224);
-	re_u1.push(/barns?$/); ru.push([2,0,0,0,0,0,0,0]); rf.push(1e-28);
-	re_u1.push(/^[Pp]arsecs?$/); ru.push([1,0,0,0,0,0,0,0]); rf.push(3.085677581491e+16);
-	re_u1.push(/^[Ll]ight-?[Yy]ears?$|^ly$/); ru.push([1,0,0,0,0,0,0,0]); rf.push(9460730472580800);
-	re_u1.push(/^[Ee]rgs?$/); ru.push([2,1,-2,0,0,0,0,0]); rf.push(1e-7);
-	re_u1.push(/^atmospheres?$|^atm$/); ru.push([-1,1,-2,0,0,0,0,0]); rf.push(100);
-	var nu1=ru.length;
-	
-	// other regular expressions
-	var re_err=/[ a-zA-Z0-9=;+\-^*_\/().]/g, re_in=/ in /, re_eq=/(.+)=/,
-		re_ep =/[Ee]\+?(?=[0-9])/g, re_em=/[Ee]-(?=[0-9])/g,
-		re_ep1=/#/g, re_em1=/@/g,
-		re_pm=/([^\^])-/g, re_s=/\s/g, re_ss=/\(\+/g, re_par=/^\s*\((.+)\)\s*$/g,
-		re_unit1=/([0-9\).])\s*([A-Za-z]+)/g,
-		re_unit2=/[A-Za-z]/, re_unit3=/([A-Za-z]+)/g;
 		
 	// HTML elements
 	var ein  = document.getElementById("in" );
 	var eout = document.getElementById("out");
-	
+
 	// Main callback, when Enter is pressed
 	function go(e) {
 		if(typeof(e)=='undefined' && window.event) { e=window.event; }
@@ -507,12 +536,13 @@
 	}
 
 	// Initiate calculation
+	var graph;
 	function calcstart() {
 		eout.innerHTML = "";
 		
 		var sin=ein.value, sout ="", varout=[], varname,
 			i,j,k,l,u,v,us,newu,newu0,s,ss,sss,tm,tp,ok,
-			gcont,g,gw,gh,plot,rect,zoom,lx,ly;
+			gcont,g,gw,gh,rect,zoom,lx,ly,x,y,w,h;
 		
 		// wrong characters
 		var err=sin.replace(re_err,'');
@@ -528,36 +558,17 @@
 			if(s.trim().length==0) {continue}
 			
 			// if begins with "graph", then graph something
+			graph=false;
 			if(s.trim().substring(0,6)=="graph ") {
-				gcont=document.createElement("div"); g=document.createElementNS(svgns,"svg");
-				gcont.className="graphcont";
-				gcont.appendChild(g); eout.appendChild(gcont);
-				gw=gcont.clientWidth ; g.setAttribute("width" ,gw+"px");
-				gh=gcont.clientHeight; g.setAttribute("height",gh+"px");
-				// We create "plot" which groups all elements in the graph for easy scrolling
-				plot=g.Group();
-				plot.init(-100000,100000,-10000,10000,gw,gh);
-				// Create a transparent overlay for detecting mousedown
-				rect=g.Rect(0,0,gw,gh,"transparent","transparent",0);
-				rect.onmousedown = moveBegin;
-				rect.addEventListener("mousemove", moveContinue, false);
-				// Create zoom buttons
-				var x=5,y=5,w=14,h=14;
- 				g.ZoomButton(x,y,w,h,"+").z=[1.1,1.1];
- 				g.ZoomButton(x,y+h,w,h,"-").z=[1/1.1,1/1.1];
- 				x+=w*2; w*=2/3; h*=2/3;
- 				g.ZoomButton(x,y,w,h,"+").z=[1,1.1];
- 				g.ZoomButton(x,y+2*h,w,h,"-").z=[1,1/1.1];
- 				x-=w; y+=h;
- 				g.ZoomButton(x+2*w,y,w,h,"+").z=[1.1,1];
- 				g.ZoomButton(x,y,w,h,"-").z=[1/1.1,1];
-				return;
+				graph=true;
+				s=s.trim().substring(6);
 			}
 			
 			// if "in" is included, it means a change of units
 			s=s.replace(re_in,";").split(';');
 			newu="";
 			if(s.length>1) {
+				if(graph) { eout.innerHTML = "Cannot graph and change units."; return; }
 				newu0=s[1];
 				newu=newu0.replace(re_s,"");
 				newu="("+newu+")"; // newu contains the target units
@@ -568,6 +579,7 @@
 			s=s.replace(re_eq,"$1;").split(';');
 			varname="";
 			if(s.length>1) {
+				if(graph) { eout.innerHTML = "Cannot graph an assignment."; return; }
 				varname=s[0].trim(); s[0]=s[1]; // save variable name
 				if(!/^[a-zA-Z]+\w*$/.test(varname)) { // verify variable name
 					eout.innerHTML = "Unaccepted variable name: "+varname; return; }
@@ -599,6 +611,32 @@
 			// If the output contains "Error:" then it has an error.
 			// Else, we make the output nice.
 			if(s[0]!="Error:") {
+				if(graph) {
+					gcont=document.createElement("div"); g=document.createElementNS(svgns,"svg");
+					gcont.className="graphcont";
+					gcont.appendChild(g); eout.appendChild(gcont);
+					gw=gcont.clientWidth ; g.setAttribute("width" ,gw+"px");
+					gh=gcont.clientHeight; g.setAttribute("height",gh+"px");
+					// We create "plot" which groups all elements in the graph for easy scrolling
+					plot=g.Group();
+					plot.curveEq = s[0].split("|"); // add the curve equation to the object
+					plot.init(-1,1,-1,1,gw,gh); // initialize the plot
+					// Create a transparent overlay for detecting mousedown
+					rect=g.Rect(0,0,gw,gh,"transparent","transparent",0);
+					rect.onmousedown = moveBegin;
+					// Create zoom buttons
+					x=5;y=5;w=14;h=14;
+					g.ZoomButton(x,y,w,h,"+").z=[1.1,1.1];
+					g.ZoomButton(x,y+h,w,h,"-").z=[1/1.1,1/1.1];
+					x+=w*2; w*=2/3; h*=2/3;
+					g.ZoomButton(x,y,w,h,"+").z=[1,1.1];
+					g.ZoomButton(x,y+2*h,w,h,"-").z=[1,1/1.1];
+					x-=w; y+=h;
+					g.ZoomButton(x+2*w,y,w,h,"+").z=[1.1,1];
+					g.ZoomButton(x,y,w,h,"-").z=[1/1.1,1];
+					continue;
+				}
+			
 				// Now we make units readable
 				u=""; v=s[0];
 				if(newu=="") { // if no change of units requested,
@@ -714,9 +752,11 @@
 					
 				case ')':
 					sss=s.substring(j,i); j=i+1; // get the string before ")"
+					
 					sss=segment(sss); // Evaluate the string as math expression.
 					if(sss[0]=="Error:") return sss;
 					ss.push(sss[0]); kk.push(k); uu.push(sss[1]); // Store result.
+					
 					// now ss contains a list of previous values
 					// uu contains a list of previous units
 					// kk contains a list of previous "parenthesis levels"
@@ -789,8 +829,12 @@
 					} 
 					
 					// Try to evaluate the final expression in parenthesis.
-					try{ss.push(""+eval(sss))}
-					catch(e) {return ["Error:","cannot evaluate "+sss];}
+					if(graph && sss.indexOf("|")>=0) {
+						ss.push(sss);
+					} else {						
+						try{ss.push(""+eval(sss))}
+						catch(e) {return ["Error:","cannot evaluate "+sss];}
+					}
 					kk.push(k); uu.push(uuu[0]); // store the result.
 					break;
 					
@@ -814,6 +858,11 @@
 	// Analyzes a segment with either a math expression or units.
 	function segment(sss) {
 		var i=sss.search(re_unit2),j,k,l,ok;
+
+		// case of the "x" variable
+		if(graph && (sss=="x" || sss=="-x")) {
+			return [sss.replace("x","(|)"), [0,0,0,0,0,0,0,0]];
+		} 
 
 		if(i<0) { // If just a number,
 			sss=[sss,[0,0,0,0,0,0,0,0]]; // indicate no units.
