@@ -119,7 +119,7 @@
 		this.b=[w,h]; // box size
 		this.s=[w/(x2-x1), h/(y1-y2)]; // scalings
 		this.t=[-x1*this.s[0], -y2*this.s[1]]; // translations
-		this.setAttribute("transform","matrix("+this.s[0]+",0,0,"+this.s[0]+","+this.t[0]+","+this.t[1]+")");
+		this.setAttribute("transform","translate("+this.t[0]+","+this.t[1]+")");
 		//this.root=this; //defined as "root" plot.
 
 		// Create axes
@@ -132,14 +132,12 @@
 		for(i=0; i<2*this.nt[1]; i+=1) { this.ticks[1].Line(0,0,0,0,"#777",0); }
 		// Create tick labels with an optional "tspan" for powers.
 		// They are not in "this", because we don't want the font to scale.
-		this.overlay=this.parentNode.Group();
-		this.overlay.setAttribute("transform","matrix(1,0,0,1,"+this.t[0]+","+this.t[1]+")");
-		this.tickL=[this.overlay.Group(), this.overlay.Group()];
-		for(i=0; i<2*this.nt[0]; i+=1) { this.tickL[0].Text(" ",0,0,undefined,"#777",'NC').Tspan("",-5/this.s[0]).setAttribute("dy",-5); }
-		for(i=0; i<2*this.nt[1]; i+=1) { this.tickL[1].Text(" ",0,0,undefined,"#777",'MW').Tspan("",-5/this.s[0]).setAttribute("dy",-5); }
+		this.tickL=[this.Group(), this.Group()];
+		for(i=0; i<2*this.nt[0]; i+=1) { this.tickL[0].Text(" ",0,0,12,"#777",'NC').Tspan("",-5/this.s[0]).setAttribute("dy",-5); }
+		for(i=0; i<2*this.nt[1]; i+=1) { this.tickL[1].Text(" ",0,0,12,"#777",'MW').Tspan("",-5/this.s[0]).setAttribute("dy",-5); }
 		// Create curve
 		this.curve=this.Polyline([0,0],"#4bb",2);
-		this.np=1000;
+		this.np=2000;
 		
 		// Add replotting management after scrolling
 		this.update = function() {
@@ -148,15 +146,20 @@
 			this.y2=-this.t[1]/this.s[1]; this.y1=this.b[1]/this.s[1]+this.y2;
 			var m=[2*this.x1-this.x2, 2*this.y1-this.y2]
 			var M=[2*this.x2-this.x1, 2*this.y2-this.y1];
+			// Prepare new points for the curve
+			var l=(M[0]-m[0])/this.np;
+			var points=new Array(2*this.np);
+			var i=0;
+			for(var z=m[0]; z<M[0]; z+=l) {
+				points[i*2]=z*this.s[0];
+				points[i*2+1]=Math.min(Math.max( this.curveEq(z) ,m[1]),M[1])*this.s[1];
+				i+=1;
+			}
 			// Update axes
-			this.ax.sets({"x1":""+m[0], "x2":""+M[0]});
-			this.ay.sets({"y1":""+(-m[1]*this.AR), "y2":""+(-M[1]*this.AR)});
-			// Update tick label font size
-			var fs = "12";
-			this.tickL[0].setAttribute("font-size",fs);
-			this.tickL[1].setAttribute("font-size",fs);
+			this.ax.sets({"x1":""+m[0]*this.s[0], "x2":""+M[0]*this.s[0]});
+			this.ay.sets({"y1":""+(-m[1]*this.s[1]), "y2":""+(-M[1]*this.s[1])});
 			// Update ticks and labels
-			var p,r,q,i,j,t,l,s,n,z1,z2,k,kk,al;
+			var p,r,q,j,t,s,n,z1,z2,k,kk,al;
 			al=['NC','MW']; zz=[1,1]; // tick label alignment
 			if(this.b[1]<2*this.t[1]) { al[0]='SC'; zz[1]=-1; } // reverse tick alignment if out of box
 			if(this.b[0]<2*this.t[0]) { al[1]='ME'; zz[0]=-1; }
@@ -171,7 +174,7 @@
 				i=0;
 				for(var z=m[k]-m[k]%q;z<M[k];z+=q) { // for each tick position
 					z1[k]=z; z2[k]=z;
-					t[i].sets({"x1":""+z1[0],"x2":""+z2[0],"y1":""+(-z1[1]*this.AR),"y2":""+(-z2[1]*this.AR),
+					t[i].sets({"x1":""+z1[0]*this.s[0],"x2":""+z2[0]*this.s[0],"y1":""+(-z1[1]*this.s[1]),"y2":""+(-z2[1]*this.s[1]),
 						"stroke-width":z?1:0});
 					s=""; n="";
 					if(p*p>9) { // if too long number, display with power of 10
@@ -197,17 +200,8 @@
 				}
 			}
 			// Update curve
-			l=(M[0]-m[0])/this.np;
-			var points=new Array(2*this.np);
-			i=0;
-			for(z=m[0]; z<M[0]; z+=l) {
-				points[i*2]=z; points[i*2+1]=-Math.min(Math.max( eval(this.curveEq.join(z+"")) ,m[1]),M[1])*this.AR;
-				i+=1;
-			}
 			this.curve.setAttribute("points",points);
 		};
-		
-		this.update(); // first drawing
 	}
 	
 	// Make SVG plot movable
@@ -224,22 +218,21 @@
 		var x,u;
 		x = [evt.clientX-moving.c10+moving.t[0], evt.clientY-moving.c20+moving.t[1]];
 		// move the plot
-		moving.setAttribute("transform","matrix("+moving.s[0]+",0,0,"+moving.s[0]+","+x[0]+","+x[1]+")");
-		moving.overlay.setAttribute("transform","matrix(1,0,0,1,"+x[0]+","+x[1]+")");
+		moving.setAttribute("transform","translate("+x[0]+","+x[1]+")");
 		// make sure that the ticks don't move further than the plot box
 		u = 2*x[0]/moving.b[0]-1; u=u*(Math.min(1,1/Math.abs(u))-1)*moving.b[0]/2;
-		moving.ticks[1].setAttribute("transform","translate("+(u/moving.s[0])+",0)");
+		moving.ticks[1].setAttribute("transform","translate("+u+",0)");
 		moving.tickL[1].setAttribute("transform","translate("+u+",0)");
 		u = 2*x[1]/moving.b[1]-1; u=u*(Math.min(1,1/Math.abs(u))-1)*moving.b[1]/2;
-		moving.ticks[0].setAttribute("transform","translate(0,"+(u/moving.s[0])+")");
+		moving.ticks[0].setAttribute("transform","translate(0,"+u+")");
 		moving.tickL[0].setAttribute("transform","translate(0,"+u+")");
 	}
 	function moveEnd(evt) {
 		document.onmouseup=null;
 		if(!moving) return;
 		var e=moving; moving=undefined;
-		var t=e.getAttribute("transform").match(/[0-9.e+\-]+/g);
-		e.t[0]=parseFloat(t[4]); e.t[1]=parseFloat(t[5]);
+		var t=e.getAttribute("transform").match(/[0-9.]+[eE\+\-0-9]*/g);
+		e.t[0]=parseFloat(t[0]); e.t[1]=parseFloat(t[1]);
 		e.update();
 	}
 	
@@ -259,8 +252,7 @@
 		plot.s[1]*=zooming.z[1];
 		plot.t[0]=plot.b[0]/2-zooming.z[0]*(plot.b[0]/2-plot.t[0]);
 		plot.t[1]=plot.b[1]/2-zooming.z[1]*(plot.b[1]/2-plot.t[1]);
-		plot.setAttribute("transform","matrix("+plot.s[0]+",0,0,"+plot.s[0]+","+plot.t[0]+","+plot.t[1]+")");
-		plot.overlay.setAttribute("transform","matrix(1,0,0,1,"+plot.t[0]+","+plot.t[1]+")");
+		plot.setAttribute("transform","translate("+plot.t[0]+","+plot.t[1]+")");
 		plot.update();
 		setTimeout(zoomContinue, 50);
 	}
@@ -619,7 +611,7 @@
 					gh=gcont.clientHeight; g.setAttribute("height",gh+"px");
 					// We create "plot" which groups all elements in the graph for easy scrolling
 					plot=g.Group();
-					plot.curveEq = s[0].split("|"); // add the curve equation to the object
+					plot.curveEq = new Function("x","return "+s[0].split("|").join("x")); // add the curve equation to the object
 					plot.init(-1,1,-1,1,gw,gh); // initialize the plot
 					// Create a transparent overlay for detecting mousedown
 					rect=g.Rect(0,0,gw,gh,"transparent","transparent",0);
@@ -634,6 +626,8 @@
 					x-=w; y+=h;
 					g.ZoomButton(x+2*w,y,w,h,"+").z=[1.1,1];
 					g.ZoomButton(x,y,w,h,"-").z=[1/1.1,1];
+					// Draw the plot
+					plot.update();
 					continue;
 				}
 			
