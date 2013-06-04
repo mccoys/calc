@@ -109,13 +109,113 @@
  	};
  	
 	// Functions controling the SVG plot
+	function plotQuality(f,xm,xM) { // estimate the "quality" of the x range for plotting useful stuff
+		var m=100, y=new Array(m), dx=(xM-xm)/m, x=xm-dx, q=0, p;
+		var ym=Number.MAX_VALUE, yM=-Number.MAX_VALUE;
+		for(k=0; k<m; k+=1) { // calculate values
+			x+=dx; y[k]=f(x);
+			if(y[k]<ym) { ym=y[k]; }
+			if(y[k]>yM) { yM=y[k]; }
+		}
+		if(ym==yM) { return [0,0,ym,yM]; }
+		// normalize
+		for(k=0; k<m; k+=1) { if(!isNaN(y[k])) { y[k]=ym+(y[k]-ym)/(yM-ym); x+=y[k]*(xm+k*dx); q+=y[k]; } }
+		// first derivative
+		p=0.5*m;
+		for(k=1; k<m; k+=1) { y[k]-=y[k-1]; if(!isNaN(y[k])) { x+=p*Math.abs(y[k])*(xm+k*dx); q+=p*Math.abs(y[k]); } }
+		// second derivative
+		p*=p;
+		for(k=2; k<m; k+=1) { y[k]-=y[k-1]; if(!isNaN(y[k])) { x+=p*Math.abs(y[k])*(xm+k*dx); q+=p*Math.abs(y[k]); } }
+		// third derivative
+		p*=p;
+		for(k=3; k<m; k+=1) { y[k]-=y[k-1]; if(!isNaN(y[k])) { x+=p*Math.abs(y[k])*(xm+k*dx); q+=p*Math.abs(y[k]); } }
+		return [x/q,q,ym,yM];
+	}
+	function findBestBounds(f,plot) { // Find the best plot limits automatically
+		var xm,xM,ym,yM,m=Math.log(Number.MIN_VALUE),M=Math.log(Number.MAX_VALUE);
+		var k,lnx,x,y,prevx,dx,okm=false,okM=false, prec;
+		// The first step is to find a range containing finite values of the function
+		for(k=100; k<=10000; k*=10) { // several attemps, refining the resolution each time
+			// First, negative (positive) numbers for finding left (right) boundary
+			for(lnx=M; lnx>=m; lnx-=(M-m)/k) {
+				if(okm && okM) { break; }
+				x=Math.exp(lnx);
+				if(!okm && isFinite(f(-x))) { xm=[-(prevx||x),-x]; okm=true; }
+				if(!okM && isFinite(f( x))) { xM=[ x,  prevx||x ]; okM=true; }
+				prevx=x;
+			}
+			// Second, positive (negative) numbers for finding left (right) boundary
+			for(lnx=m; lnx>=M; lnx+=(M-m)/k) {
+				if(okm && okM) { break; }
+				x=Math.exp(lnx);
+				if(!okm && isFinite(f( x))) { xm=[  prevx||x , x]; okm=true; }
+				if(!okM && isFinite(f(-x))) { xM=[-x,-(prevx||x)]; okM=true; }
+				prevx=x;
+			}
+			if(okm && okM) { break; }
+		}
+		// If could not find finite numbers, then error
+		if(!okm && !okM) { return false; }
+		// Refine the xm and xM locations
+		okm=false; okM=false; prec=0.001; // prec is precision
+		while(!okm || !okM) {
+			dx=(xM[1]-xm[0])*prec;
+			if(!okm && xm[1]-xm[0]<dx) { okm=true; }
+			if(!okM && xM[1]-xM[0]<dx) { okM=true; }
+			if(!okm) {
+				x=(xm[0]+xm[1])*.5;
+				if(isFinite(f(x))) { xm[1]=x; } else { xm[0]=x; }
+			}
+			if(!okM) {
+				x=(xM[0]+xM[1])*.5;
+				if(isFinite(f(x))) { xM[0]=x; } else { xM[1]=x; }
+			}
+		}
+		xm=xm[0]; xM=xM[1]; // Now we have the global x boundaries
+		// 
+		var q,prevq,j;
+		q = plotQuality(f,xm,xM);
+		prevq=q;
+		p=1;
+		for(k=0;k<100;k+=1) {
+			dx=p*(2*q[0]-xm-xM);
+			if(Math.abs(xM-q[0])<Math.abs(xm-q[0])) {
+				xm+=dx;
+				q = plotQuality(f,xm,xM);
+				if(q[1]<prevq[1]) { xm-=dx; p*=0.5; }
+				else { prevq=q; }
+			} else {
+				xM+=dx;
+				q = plotQuality(f,xm,xM);
+				if(q[1]<prevq[1]) { xM-=dx; p*=0.5; }
+				else { prevq=q; }
+			}
+			console.log([xm,xM]);
+
+			ym=q[2]; yM=q[3];
+			plot.x1=xm; plot.x2=xM; plot.y1=ym; plot.y2=yM;
+			plot.s=[plot.b[0]/(xM-xm),plot.b[1]/(ym-xM)];
+			plot.t=[-xm*plot.s[0], -yM*plot.s[1]];
+			plot.update();
+			//alert([xm,xM,ym,yM]);
+		}
+		
+		m=100; y=new Array(m); dx=(xM-xm)/m; x=xm-dx;
+		for(k=0; k<m; k+=1) { // calculate values
+			x+=dx; y[k]=f(x);
+			if(y[k]<ym) { ym=y[k]; }
+			if(y[k]>yM) { yM=y[k]; }
+		}
+		//return [xm,xM,ym,yM];
+	}
 	SVGGElement.prototype.init = function(x1,x2,y1,y2,w,h) { // Define plot limits, scalings etc
+		var i;
+		// Define plot positions, etc.
 		this.x1=x1; this.x2=x2; this.y1=y1; this.y2=y2;
 		this.b=[w,h]; // box size
 		this.s=[w/(x2-x1), h/(y1-y2)]; // scalings
 		this.t=[-x1*this.s[0], -y2*this.s[1]]; // translations
 		this.setAttribute("transform","translate("+this.t[0]+","+this.t[1]+")");
-
 		// Create axes
 		this.ax=this.Line(0,0,0,0,"#777",1);
 		this.ay=this.Line(0,0,0,0,"#777",1);
@@ -527,7 +627,7 @@
 		
 		var sin=ein.value, sout ="", varout=[], varname,
 			i,j,k,l,u,v,us,newu,newu0,s,ss,sss,tm,tp,ok,
-			gcont,g,gw,gh,rect,zoom,lx,ly,x,y,w,h;
+			gcont,g,gw,gh,rect,zoom,lx,ly,x,y,w,h,f,b;
 		
 		// wrong characters
 		var err=sin.replace(re_err,'');
@@ -597,6 +697,12 @@
 			// Else, we make the output nice.
 			if(s[0]!="Error:") {
 				if(graph) {
+					// Create a function that represents the curve, and find the best boundaries
+					f = new Function("x","return "+s[0].split("|").join("x"));
+					//b=findBestBounds(f);
+					b=[-1,1,-1,1];
+					if(!b) { eout.innerHTML = "Error:<br/>cannot graph the function."; }
+					// Create the svg container
 					gcont=document.createElement("div"); g=document.createElementNS(svgns,"svg");
 					gcont.className="graphcont";
 					gcont.appendChild(g); eout.appendChild(gcont);
@@ -604,8 +710,8 @@
 					gh=gcont.clientHeight; g.setAttribute("height",gh+"px");
 					// We create "plot" which groups all elements in the graph for easy scrolling
 					plot=g.Group();
-					plot.curveEq = new Function("x","return "+s[0].split("|").join("x")); // add the curve equation to the object
-					plot.init(-1,1,-1,1,gw,gh); // initialize the plot
+					plot.curveEq = f; // add the curve equation to the object
+					plot.init(b[0],b[1],b[2],b[3],gw,gh); // initialize the plot
 					// Create a transparent overlay for detecting mousedown
 					rect=g.Rect(0,0,gw,gh,"transparent","transparent",0);
 					rect.onmousedown = moveBegin;
@@ -621,6 +727,7 @@
 					g.ZoomButton(x,y,w,h,"-").z=[1/1.1,1];
 					// Draw the plot
 					plot.update();
+					//findBestBounds(f,plot);
 					continue;
 				}
 			
@@ -663,21 +770,24 @@
 							+ sss[0].substring(k).match(/[0-9]{3}/g).join(" "); }
 				catch(e) {}
 				if(sss.length>1) {
+					sss[1]=sss[1].replace(/0*$/,""); // remove trailing zeros
 					k = sss[1].length - (sss[1].length % 3);
 					try{ sss[1] = sss[1].substring(0,k).match(/[0-9]{3}/g).join(" ")
 								+ " " + sss[1].substring(k); }
 					catch(e) {}
-				}
-				ss[0] = sss.join(".");
+				} else { sss.push(""); }
+				
+				if(sss[1].length==0) { ss[0]=sss[0]; }
+				else { ss[0] = sss.join("."); }
 	
 				// Rebuild the string
 				v = ss[0];
-				if(ss.length>1) {v = v+"e"+ss[1];}
-	
-				// Convert exponentiation
-				v=v.replace(/e[+-]0+/,"");
-				v=v.replace(/e\+?(.*)$/," &#215; 10<sup>$1</sup>");
-				
+				if(ss.length>1) {
+					ss[1]="10<sup>"+parseInt(ss[1])+"</sup>"; // Convert exponentiation
+					if(v=="1") { v=ss[1]; }
+					else { v=v+" &#215; "+ss[1]; }
+				}
+					
 				// Manage storing to a variable
 				if(varname.length>0) {
 					us=" ";
