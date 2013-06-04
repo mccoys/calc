@@ -60,7 +60,7 @@
 			</g></svg>
 		</div>
 		<input id="in" type="text" size="86" style="width:600px" onkeypress="go(event);" value="me*c^2 in keV"></input>
-		<div id="outcont"><div id="out">&nbsp;</div></div>
+		<div id="outcont"><div id="out"> </div></div>
 		<div id="hcont">
 			<div id="help1" onclick="help(this)">Examples</div>
 			<div id="help2" onclick="help(this)">Constants</div>
@@ -379,20 +379,23 @@
 							+ sss[0].substring(k).match(/[0-9]{3}/g).join(" "); }
 				catch(e) {}
 				if(sss.length>1) {
+					sss[1]=sss[1].replace(/0*$/,""); // remove trailing zeros
 					k = sss[1].length - (sss[1].length % 3);
 					try{ sss[1] = sss[1].substring(0,k).match(/[0-9]{3}/g).join(" ")
 								+ " " + sss[1].substring(k); }
 					catch(e) {}
-				}
-				ss[0] = sss.join(".");
+				} else { sss.push(""); }
+				
+				if(sss[1].length==0) { ss[0]=sss[0]; }
+				else { ss[0] = sss.join("."); }
 	
 				// Rebuild the string
 				v = ss[0];
-				if(ss.length>1) {v = v+"e"+ss[1];}
-	
-				// Convert exponentiation
-				v=v.replace(/e[+-]0+/,"");
-				v=v.replace(/e\+?(.*)$/," &#215; 10<sup>$1</sup>");
+				if(ss.length>1) {
+					ss[1]="10<sup>"+parseInt(ss[1])+"</sup>"; // Convert exponentiation
+					if(v=="1") { v=ss[1]; }
+					else { v=v+" &#215; "+ss[1]; }
+				}
 				
 				// Manage storing to a variable
 				if(varname.length>0) {
