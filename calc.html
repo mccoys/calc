@@ -651,7 +651,13 @@
 		exa[k].style.cursor = "pointer";
 		exa[k].onclick = function(){ein.value=this.childNodes[0].innerHTML; calcstart();};
 	}
-		
+	
+	// If the URL contains the formula embedded, then use that
+	var URLeq=location.search;
+	if(URLeq.length>0) {
+		URLeq=URLeq.substring(1);
+		if(URLeq.length>0) { ein.value=URLeq; }
+	}
 -->
 </script>
 </body>
