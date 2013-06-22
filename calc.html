@@ -33,9 +33,608 @@
 	.t td:nth-child(1) { width:250px; text-align:right; }
 	.t td:nth-child(2) { width:100px; text-align:center; }
 	.t td:nth-child(3) { width:250px; text-align:left; }
+	.graphcont{ width:600px; height:300px; padding:0;
+		margin:0 auto; border:1px solid #dddddd; position:relative}
+	
 -->
 </style>
 <link rel="shortcut icon" href="data:image/x-icon;base64,AAABAAEAEBACAAEAAQCwAAAAFgAAACgAAAAQAAAAIAAAAAEAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABYWFgAAAAAAP8AAAD/AAAA//8AAP//AAD//AAA//gAAD/4AAAf+AAAH/gAAB/8AAAf/wAAP/8AAP//AAD//wAAAP8AAAD/AAD/AAAA/wAAAP//AAD//wAA//wAAP/4AAA/+AAAH/gAAB/4AAAf/AAAH/8AAD//AAD//wAA//8AAAD/AAAA/wAA"/>
+<script language="javascript">
+<!--
+	var svgns="http://www.w3.org/2000/svg";
+	
+	// Add functions to SVG elements
+	SVGElement.prototype.sets = function(att) { // set multiple attributes at once
+		for(var key in att) { this.setAttribute(key, att[key]); }
+	}
+	SVGElement.prototype.Group = function() {
+		var e=document.createElementNS(svgns,"g");
+		return this.appendChild(e);
+	}
+	SVGElement.prototype.Line = function(x1,y1,x2,y2,stroke,thickness,dash) {
+		var e=document.createElementNS(svgns,"line");
+		if(!dash) { dash="none"; }
+		e.sets({"x1":""+x1, "y1":""+y1, "x2":""+x2, "y2":""+y2, "stroke-dasharray":dash,
+			"vector-effect":"non-scaling-stroke", "stroke-width":thickness, "stroke":stroke });
+		return this.appendChild(e);
+	};
+	SVGElement.prototype.Rect = function(x,y,w,h,fill,stroke,thickness) {
+		var e=document.createElementNS(svgns,"rect");
+		e.sets({"x":""+x, "width":""+w, "y":""+y, "height":""+h, "stroke":stroke,
+			"stroke-width":thickness, "fill":fill, "vector-effect":"non-scaling-stroke" });
+		return this.appendChild(e);
+	};
+	SVGElement.prototype.Polyline = function(points,stroke,thickness,dash) {
+		var e=document.createElementNS(svgns,"polyline");
+		if(!dash) { dash="none"; }
+		e.sets({"points":points, "vector-effect":"non-scaling-stroke",
+			"fill":"none", "stroke":stroke, "stroke-width":thickness, "stroke-dasharray":dash });
+		return this.appendChild(e);
+	};
+	SVGElement.prototype.Text = function(str,x,y,fontsize,color,align,rot) {
+		var t=document.createElementNS(svgns,"text");
+		t.sets({"x":x+"","y":y+"","fill":color});
+		if(fontsize) { t.setAttribute("font-size",fontsize+""); }
+		t.textContent = str;
+		this.appendChild(t);
+		t.move(x,y,align,rot);
+		return t;
+	};
+	SVGTextElement.prototype.move = function(x,y,align,rot) {
+		// 'align' can contain NW, NE, NC, SW, SE, SC, MW, ME, or MC
+		var b=this.getBBox(); var tw=parseFloat(b.width), th=parseFloat(b.height)*0.5;
+		if (align==undefined) {align='SW';}
+		tw = tw*[0,.5,1]["WCE".indexOf(align[1])];
+		th = th*[0,.5,1]["SMN".indexOf(align[0])];
+		this.sets({"x":x-tw, "y":y+th});
+		// Now rotate
+		if (rot==undefined) { rot=""; }
+		if (rot.length>0) { this.setAttribute("transform","rotate("+rot+","+x+","+y+")"); }
+	};
+	SVGTextElement.prototype.Tspan = function(str,dy) {
+		var t=document.createElementNS(svgns,"tspan");
+		t.setAttribute("dy",dy);
+		t.textContent = str;
+		return this.appendChild(t);
+	};
+	SVGElement.prototype.ZoomButton = function(x,y,w,h,type) {
+ 		var zoom=this.Group();
+ 		zoom.Rect(x,y,w,h,"#eee","#ccc",1);
+ 		zoom.plot=this.firstChild;
+ 		zoom.onmousedown=zoomBegin;
+ 		zoom.setAttribute("cursor","pointer");
+ 		if(type=="+") {zoom.Line(x+w/2,y+h/5,x+w/2,y+4*h/5,"#777",1.5);}
+ 		zoom.Line(x+w/5,y+h/2,x+4*w/5,y+h/2,"#777",1.5);
+  		return zoom;
+ 	};
+ 	
+	// Functions controling the SVG plot
+	function findBestBounds(plot) { // Find the best plot limits automatically
+		var xm,xM,ym,yM,f=plot.curveEq;
+		//var m=Math.log(Number.MIN_VALUE*1000),M=Math.log(Number.MAX_VALUE*0.001);
+		var m=Math.log(1e-50),M=Math.log(1e20);
+		var i,j,k,kk,lnx,x,y,prevx,dxm,dxM,dx,dy,okm=false,okM=false, prec;
+		// The first step is to find a range containing finite values of the function
+		for(k=1000; k<=100000; k*=10) { // several attemps, refining the resolution each time
+			// First, negative (positive) numbers for finding left (right) boundary
+			for(lnx=M; lnx>=m; lnx-=(M-m)/k) {
+				if(okm && okM) { break; }
+				x=Math.exp(lnx);
+				if(!okm && isFinite(f(-x))) { xm=[-(prevx||x),-x]; okm=true; }
+				if(!okM && isFinite(f( x))) { xM=[ x,  prevx||x ]; okM=true; }
+				prevx=x;
+			}
+			// Second, positive (negative) numbers for finding left (right) boundary
+			for(lnx=m; lnx>=M; lnx+=(M-m)/k) {
+				if(okm && okM) { break; }
+				x=Math.exp(lnx);
+				if(!okm && isFinite(f( x))) { xm=[  prevx||x , x]; okm=true; }
+				if(!okM && isFinite(f(-x))) { xM=[-x,-(prevx||x)]; okM=true; }
+				prevx=x;
+			}
+			if(okm && okM) { break; }
+		}
+		// If could not find finite numbers, then error
+		if(!okm || !okM) { return false; }
+		// Refine the xm and xM locations
+		okm=false; okM=false; prec=1e-10; // prec is precision
+		dxm=(xm[1]-xm[0])*prec; dxM=(xM[1]-xM[0])*prec;
+		while(!okm || !okM) {
+			if(xm[1]-xm[0]>0) { dxm=Math.min((xM[1]-xm[0])*prec,dxm); }
+			if(xM[1]-xM[0]>0) { dxM=Math.min((xM[1]-xm[0])*prec,dxM); }
+			if(!okm && xm[1]-xm[0]<=dxm) { okm=true; }
+			if(!okM && xM[1]-xM[0]<=dxM) { okM=true; }
+			if(!okm) {
+				x=(xm[0]+xm[1])*.5;
+				if(isFinite(f(x))) { xm[1]=x; } else { xm[0]=x; }
+			}
+			if(!okM) {
+				x=(xM[0]+xM[1])*.5;
+				if(isFinite(f(x))) { xM[0]=x; } else { xM[1]=x; }
+			}
+		}
+		xm=xm[1]; xM=xM[0]; // Now we have the global x boundaries
+		
+		// Adaptatively find best range
+		plot.x_=new Array(5); plot.y_=new Array(5);
+		// Firs, we define a function for adaptative refinement
+		plot.adaptative = function(x0,x1,depth,eps) {
+			if(depth>=this.maxdepth) return depth;
+			this.dx=(x1-x0)*0.25;
+			this.x_[0]=x0; this.x_[1]=x0+this.dx; this.x_[2]=x0+2*this.dx; this.x_[3]=x0+3*this.dx; this.x_[4]=x1;
+			this.y0=Number.MAX_VALUE; this.y1=-Number.MAX_VALUE;
+			for(this.k=0;this.k<5;this.k+=1) {
+				this.y_[k]=this.curveEq(this.x_[k]);
+				if(this.y_[this.k]<this.y0) { this.y0=this.y_[this.k]; } // find local min
+				if(this.y_[this.k]>this.y1) { this.y1=this.y_[this.k]; } // find local max
+			}
+			if(this.y0*this.y1>0) { // pb of numerical precision
+				if(Math.abs(this.y1-this.y0)<1e-6*Math.max(Math.abs(this.y0),Math.abs(this.y1))) {return 0;}
+			}
+			this.k=1; i=this.y_[1]-this.y_[0];
+			while(this.k<4) {
+				this.j=this.y_[this.k+1]-this.y_[this.k];
+				if(this.i*this.j<0) {break;}
+				this.i=this.j; this.k+=1;
+			}
+			this.refine=false;
+			if(this.k>=4) { // if oscillating, refine
+				this.refine=true;
+			} else { // if not oscillating much, check if smooth enough
+				this.q1=y[0]-5.*y[1]+19.*y[2]+9.*y[3]; // first quadrature
+				this.q2=10.*y[2]+16.*y[3]-2.*y[4]; // second quadrature
+				if(Math.abs(this.q2-this.q1)>eps*this.q2) { this.refine=true; }
+			}
+			if(this.refine) {
+				return Math.max(depth, Math.max(
+					this.adaptative(x0,this.x_[2],depth+1,eps*2),
+					this.adaptative(this.x_[2],x1,depth+1,eps*2) ));
+			}
+		}
+		// Define initial x values
+		x=new Array(100); var u=new Array(99);
+		x.linspace(xm,xM);
+		// First refinement
+		var ok=false, kmax=100, i0, i1, xlim, xmax;
+		plot.maxdepth=1;
+		for(k=0; k<kmax; k+=1) {
+			for(i=0; i<99; i+=1) { u[i]=plot.adaptative(x[i],x[i+1],0,1e-7); }
+			console.log(k);
+			i0=u.indexOf(1);
+			if(i0<0) {
+				if(!ok) { x.shrinkTowards0(0.01); }
+				else    { x.shrinkTowards0(1.5); }
+			} else {
+				ok=true; i1=u.lastIndexOf(1);
+				if(i0==0 && i1==98) { break; }
+				x.linspace(x[i0],x[i1+1]);
+			}
+			xmax=Math.max(Math.abs(x[99]),Math.abs(x[0]));
+			if(Math.abs(x[99]-x[0])<Math.max(1e-20, 0.01*xmax)) { k=kmax; break; }
+		}
+		return [k,k,k,k];
+		xlim=adjustWith0(x[0], x[99], k>=kmax-1);
+		xm=Math.max(xm,xlim[0]); xM=Math.min(xM,xlim[1]);
+		// Second refinement
+		if(k<kmax-1) {
+			x.linspace(xm,xM);
+			plot.maxdepth=4; kmax=40; k=0; ok=false;
+			var utot, umax, v0, v1, vtot, j0, j1, v=new Array(100);
+			while(k<kmax) {
+				k+=1;
+				if(k>kmax-5 && plot.maxdepth<9) { k=1; plot.maxdepth+=1; }
+				utot=0; umax=0;
+				for(i=0; i<99; i+=1) {
+					u[i]=plot.adaptative(x[i],x[i+1],0,1e-6);
+					if(u[i]>umax) { umax=u[i]; }
+					v[i]=(u[i]>=plot.maxdepth);
+					if(v[i]) { utot+=1; }
+				}
+				// utot is the number of maximal refinement locations
+				if(utot>1) {
+					i0=v.indexOf(1); i1=v.lastIndexOf(1);
+					// If there are several places where max-refinement has been found,
+					// we calculate vtot, the number of "switches" from maximal to non-maximal refinement
+					v0=0; vtot=0; v[99]=0;
+					for(j=0; j<100; j+=1) {
+						v1=v[j];
+						if(v0!=v1) { vtot+=1; v[j]=1; } else { v[j]=0; }
+						v0=v1;
+					}
+					// now j0 the second switch, j1 the penultimate switch
+					if(vtot<=3 || vtot>20) {
+						if(utot>=100) {
+							x.shrinkTowards0(Math.max(0.05,Math.min(0.9,Math.pow(2,-plot.maxdepth*(utot/100)))));
+						} else {
+							x.linspace(x[i0],x[i1+1]);
+						}
+						if(utot<50 && plot.maxdepth<9) { k=1; plot.maxdepth+=1; }
+					} else if(vtot>6) {
+						// If a bit too many switches, we remove the first and last ones
+						j0=v.indexOf(1); j0=v.indexOf(1,j0+1); // second switch
+						j1=v.lastIndexOf(1); j1=v.lastIndexOf(1,j1-1); // penultimate switch
+						x.linspace(x[j0],x[j1+1]);
+					} else break;
+				} else {
+					// If zero or one max-refinement locations found,
+					// then consider reducing the range to the half-width
+					umax*=0.5;
+					for(i=0; i<99; i+=1) { u[i]=(u[i]>=umax); }
+					i0=u.indexOf(1); i1=u.lastIndexOf(1);
+					if(i0==0 && i1==98) {
+						if(!ok) { ok=true; x.shrinkTowards0(1.001); continue; }
+						break;
+					}
+					x.linspace(x[i0],x[i1+1]);
+				}
+				ok=false;
+				xmax=Math.max(Math.abs(x[99]),Math.abs(x[0]));
+				if(abs(x[99]-x[0])<Math.max(1e-20, 0.01*xmax)) { k=kmax; break; }
+			}
+			xlim=adjustWith0(x[0], x[99], k>=kmax-1);
+			xm=Math.max(xm,xlim[0]); xM=Math.min(xM,xlim[1]);
+		}
+		
+		// X range is now found.
+		// Find best Y range
+		y=new Array(1000); dx=(xM-xm)/999.;
+		for(k=0;k<999;k+=1) { y[k]=f(xm+dx*k); }
+		y[999]=f(xM);
+		y.sort(function(a,b) {return a-b;});
+		var yh=new Array(11), dk, hmax;
+		for(i=0;i<30;i+=1) {
+			dy=(yM-ym)*0.1;
+			// compute histogram yh in 10 bins
+			yh[0]=0; yh[11]=999; dk=100; hmax=0;
+			for(k=1;k<10;k+=1) {
+				if(yh[k-1]>=999) { yh[k]=999; continue; }
+				dk=Math.ceil((1000-yh[k-1])/(11-k));
+				yh[k]=yh[k-1]; y0=ym+dy*k;
+				while(dk>1) {
+					if(y[yh[k]+dk]>y0) { dk=Math.floor(dk*0.5); }
+					else { yh[k]+=dk; }
+				}
+			}
+			for(k=0;k<10;k+=1) {
+				yh[k]=yh[k+1]-yh[k];
+				if(yh[k]>hmax) {hmax=yh[k];}
+			}
+			// Reduce where histogram contains more than 99% of data
+			hmax*=0.01;
+			for(k=0;k<10;k+=1) { yh[k]=(yh[k]>hmax)?1:0; }
+			i0=yh.indexOf(1); i1=yh.lastIndexOf(1);
+			if(i0==0 && i1>=9) { break; }
+			ym=ym+dy*i0; yM=ym+dy*(i1+1);
+		}
+		// Adjust y range
+		if(Math.abs(yM+ym)<yM*0.5) { yM=(yM-ym)*0.5; ym=-yM; }
+		if(yM>0 && ym>0 && ym<yM/5) { ym=0; }
+		if(yM<0 && ym<0 && yM>ym/5) { yM=0; }
+		// Adjust x range
+		k=-1;
+		do { k+=1; y0=f(xm+dx*k); } while(y0<ym || y0>yM)
+		xm=xm+dx*k;
+		k=-1;
+		do { k+=1; y0=f(xM-dx*k); } while(y0<ym || y0>yM)
+		xM=xM-dx*k;
+				
+		return [xm,xM,ym,yM];
+	}
+	SVGGElement.prototype.init = function(x1,x2,y1,y2,w,h) { // Define plot limits, scalings etc
+		var i;
+		// Define plot positions, etc.
+		this.x1=x1; this.x2=x2; this.y1=y1; this.y2=y2;
+		this.b=[w,h]; // box size
+		this.s=[w/(x2-x1), h/(y1-y2)]; // scalings
+		this.t=[-x1*this.s[0], -y2*this.s[1]]; // translations
+		this.setAttribute("transform","translate("+this.t[0]+","+this.t[1]+")");
+		// Create axes
+		this.ax=this.Line(0,0,0,0,"#777",1);
+		this.ay=this.Line(0,0,0,0,"#777",1);
+		// Create ticks
+		this.ticks=[this.Group(), this.Group()]; // x and y
+		this.nt=[22, 16]; // approximate number of ticks
+		for(i=0; i<2*this.nt[0]; i+=1) { this.ticks[0].Line(0,0,0,0,"#777",0); }
+		for(i=0; i<2*this.nt[1]; i+=1) { this.ticks[1].Line(0,0,0,0,"#777",0); }
+		// Create tick labels with an optional "tspan" for powers.
+		this.tickL=[this.Group(), this.Group()];
+		for(i=0; i<2*this.nt[0]; i+=1) { this.tickL[0].Text(" ",0,0,12,"#777",'NC').Tspan("",-5/this.s[0]).setAttribute("dy",-5); }
+		for(i=0; i<2*this.nt[1]; i+=1) { this.tickL[1].Text(" ",0,0,12,"#777",'MW').Tspan("",-5/this.s[0]).setAttribute("dy",-5); }
+		// Create curve
+		this.curve=this.Polyline([0,0],"#4bb",2);
+		this.np=2000;
+		
+		// Add replotting management after scrolling
+		this.update = function() {
+			this.AR=-this.s[1]/this.s[0]; // aspect ratio
+			this.x1=-this.t[0]/this.s[0]; this.x2=this.b[0]/this.s[0]+this.x1;
+			this.y2=-this.t[1]/this.s[1]; this.y1=this.b[1]/this.s[1]+this.y2;
+			var m=[2*this.x1-this.x2, 2*this.y1-this.y2]
+			var M=[2*this.x2-this.x1, 2*this.y2-this.y1];
+			// Prepare new points for the curve
+			var l=(M[0]-m[0])/this.np, p=0,q=0;
+			var points=new Array(2*this.np);
+			var i=0;
+			for(var z=m[0]; z<M[0]; z+=l) {
+				points[i*2]=z*this.s[0];
+				points[i*2+1]=Math.min(Math.max( this.curveEq(z) ,m[1]),M[1])*this.s[1];
+				i+=1;
+			}
+			// Update axes
+			this.ax.sets({"x1":""+m[0]*this.s[0], "x2":""+M[0]*this.s[0]});
+			this.ay.sets({"y1":""+(-m[1]*this.s[1]), "y2":""+(-M[1]*this.s[1])});
+			// Update ticks and labels
+			var r,j,t,s,n,z1,z2,k,kk,al;
+			al=['NC','MW']; zz=[1,1]; // tick label alignment
+			if(this.b[1]<2*this.t[1]) { al[0]='SC'; zz[1]=-1; } // reverse tick alignment if out of box
+			if(this.b[0]<2*this.t[0]) { al[1]='ME'; zz[0]=-1; }
+			for(k=0; k<2; k+=1) {
+				kk=(k+1)%2;
+				z1=[ (this.x2-this.x1)/200,-(this.y2-this.y1)/100]; // small offsets for ticks
+				z2=[-(this.x2-this.x1)/200, (this.y2-this.y1)/100];
+				t = this.ticks[k].childNodes; l=this.tickL[k].childNodes; // get all ticks
+				p=(M[k]-m[k])/this.nt[k]; r=Math.pow(10.,ndec(p));
+				q=Math.floor(Math.sqrt(1.5*(p/r-1))); q=(1+q*q)*r; // now q is tick separation
+				p=Math.max(ndec(m[k]),ndec(M[k]))-1; r=Math.pow(10.,p); // p is the power
+				i=0;
+				for(var z=m[k]-m[k]%q;z<M[k];z+=q) { // for each tick position
+					z1[k]=z; z2[k]=z;
+					t[i].sets({"x1":""+z1[0]*this.s[0],"x2":""+z2[0]*this.s[0],"y1":""+(-z1[1]*this.s[1]),"y2":""+(-z2[1]*this.s[1]),
+						"stroke-width":z?1:0});
+					s=""; n="";
+					if(p*p>9) { // if too long number, display with power of 10
+							s=tickformat(z/r,q/r);
+							switch(s) {
+								case "0": s=""; break;
+								case "1": s="10"; n=""+p; break;
+								case "-1": s="-10"; n=""+p; break;
+								default: s+="·10";""; n=""+p;
+							}
+					} else { 
+						s=tickformat(z,q);
+						if(s=="0") { s=""; }
+					}
+					l[i].childNodes[0].textContent=s;
+					l[i].childNodes[1].textContent=n;
+					l[i].move((kk+2*zz[0]*k)*z1[0]*this.s[0],-(-zz[1]*2.5*kk-k)*z1[1]*this.s[1],al[k]);
+					i+=1;
+				}
+				for(j=i; j<2*this.nt[k]; j+=1) { //hide unused ticks
+					t[j].setAttribute("stroke-width",0);
+					l[j].childNodes[0].textContent=""; l[j].childNodes[1].textContent="";
+				}
+			}
+			// Update curve
+			this.curve.setAttribute("points",points);
+		};
+	}
+	
+	// Make SVG plot movable
+	var moving=undefined;
+	function moveBegin(evt) {
+		evt.preventDefault(); // prevent the default svg dragging
+		document.onmouseup=moveEnd;
+		moving = evt.target.parentNode.firstChild; // e is plot
+		moving.c10=evt.clientX; moving.c20=evt.clientY; // initial coordinates
+		evt.target.addEventListener("mousemove", moveContinue, false);
+	}
+	function moveContinue(evt) {
+		if(!moving) return;
+		var x,u;
+		x = [evt.clientX-moving.c10+moving.t[0], evt.clientY-moving.c20+moving.t[1]];
+		// move the plot
+		moving.setAttribute("transform","translate("+x[0]+","+x[1]+")");
+		// make sure that the ticks don't move further than the plot box
+		u = 2*x[0]/moving.b[0]-1; u=u*(Math.min(1,1/Math.abs(u))-1)*moving.b[0]/2;
+		moving.ticks[1].setAttribute("transform","translate("+u+",0)");
+		moving.tickL[1].setAttribute("transform","translate("+u+",0)");
+		u = 2*x[1]/moving.b[1]-1; u=u*(Math.min(1,1/Math.abs(u))-1)*moving.b[1]/2;
+		moving.ticks[0].setAttribute("transform","translate(0,"+u+")");
+		moving.tickL[0].setAttribute("transform","translate(0,"+u+")");
+	}
+	function moveEnd(evt) {
+		document.onmouseup=null;
+		if(!moving) return;
+		var e=moving; moving=undefined;
+		var t=e.getAttribute("transform").match(/-?[0-9.]+[eE\+\-0-9]*/g);
+		e.t[0]=parseFloat(t[0]); e.t[1]=parseFloat(t[1]);
+		e.update();
+	}
+	
+	// Make SVG plot zoomable
+	var zooming=undefined, zoomtimer=undefined;
+	function zoomBegin(evt) {
+		evt.preventDefault(); // prevent the default svg dragging
+		document.onmouseup=zoomEnd;
+		zooming=evt.target.parentNode;
+		zooming.firstChild.setAttribute("fill","#ddd");
+		setTimeout(zoomContinue, 50);
+	}
+	function zoomContinue() {
+		if(!zooming) return; 
+		var plot=zooming.plot;
+		plot.s[0]*=zooming.z[0];
+		plot.s[1]*=zooming.z[1];
+		plot.t[0]=plot.b[0]/2-zooming.z[0]*(plot.b[0]/2-plot.t[0]);
+		plot.t[1]=plot.b[1]/2-zooming.z[1]*(plot.b[1]/2-plot.t[1]);
+		plot.setAttribute("transform","translate("+plot.t[0]+","+plot.t[1]+")");
+		plot.update();
+		setTimeout(zoomContinue, 50);
+	}
+	function zoomEnd(evt) {
+		//if(zoomtimer) {clearInterval(zoomtimer);}
+		document.onmouseup=null;
+		if(!zooming) return;
+		var e=zooming; zooming=undefined;
+		e.firstChild.setAttribute("fill","#eee");
+	}
+	
+	// number of decimal places
+	function ndec(num) {return Math.floor(Math.log(Math.abs(num))/Math.log(10)); }
+
+	// Function for testing equal arrays (must not have subarrays)
+	function arrayequal(a,b) {
+		var na=a.length, nb=b.length;
+		if(na!=nb) {return false;}
+		for(var i=0;i<na;i+=1) {if(a[i]!=b[i]){return false;}}
+		return true;
+	}
+	// Linear spaced array
+	Array.prototype.linspace = function(xmin,xmax) {
+		var dx=(xmax-xmin)/(this.length-1.);
+		for(var k=0;k<this.length-1;k+=1) { this[k]=xmin+dx*k; }
+		this[this.length-1]=xmax;
+	}
+	// Shrink array towards 0
+	Array.prototype.shrinkTowards0 = function(coeff) {
+		if(this[0]*this[this.length-1]<0) {
+			for(var k=0;k<this.length;k+=1) { this[k]=this[k]*coeff; }
+		} else if(this[0]>=0) {
+			for(var k=1;k<this.length;k+=1) { this[k]=this[0]+(this[k]-this[0])*coeff; }
+		} else {
+			for(var k=0;k<this.length-1;k+=1) { this[k]=this[this.length-1]+(this[k]-this[this.length-1])*coeff; }
+		}
+	}
+	// Adjust xmin and xmax near 0 to make it nice
+	function adjustWith0(xmin,xmax,undetermined) {
+		var xm=xmin, xM=xmax;
+		if(undetermined) {
+			var xmean=(xmin+xmax)*0.5, defaultx=4;
+			if(xm*xM>0 && Math.abs(xmean)<defaultx/5 && xM-xm<Math.abs(xmean)/10) {
+				xm=Math.min(0, 2*xmean);
+				xM=Math.max(0, 2*xmean);
+			} else {
+				xm=xmean-defaultx;
+				xM=xmean+defaultx;
+			}
+		}
+		if(Math.abs(xM+xm)<xM*0.5) { xm=-xM; }
+		var dx=(xM-xm)*0.5;
+		if( (xm>0 && xm<dx) || (xM<0 && xM>-dx)) { xm-=dx; xM+=dx; }
+		return [xm,xM]; 		
+	}
+	
+	// Function to make tick labels nice
+	function tickformat(x,q) {
+		var l,z,zm=x+"",m=zm.length;
+		for(var y=0;y<=q;y+=q) {
+			z=(x+y).toExponential().split("e");
+			l = z[0].length-1;
+			if(l>14) { z[0]=eval(z[0].substring(0,l)).toFixed(10); }
+			z = (eval(z.join("e"))-y)+"";
+			if(z.length<m) {m=z.length; zm=z;}
+		}
+		return zm;
+	}
+
+-->
+</script>
+<script language="javascript">
+<!--
+
+	// constants
+	var co=[], re_co=[];
+	co.push('299792458. m*s^(-1)'); re_co.push(/(\W)c(?!\w)/g); // c
+	co.push('6.67384e-11 m^3*kg^(-1)*s^(-2)'); re_co.push(/(\W)G(?!\w)/g); // G
+	co.push('6.62606957e-34 J*s'); re_co.push(/(\W)h(?!\w)/g); // h
+	co.push('1.256637061e-6 N*A^(-2)'); re_co.push(/(\W)mu_?0(?!\w)/g); // mu0
+	co.push('8.854187817e-12 F*m^(-1)'); re_co.push(/(\W)e(?:ps)?_?0(?!\w)/g); // eps0
+	co.push('1.602176565e-19 C'); re_co.push(/([^\w\.])(?:q_?)?e(?!\w)/g); // q_e
+	co.push('5.2917721092e-11 m'); re_co.push(/(\W)a_?0(?!\w)/g); // a_0
+	co.push('2.8179403267e-15 m'); re_co.push(/(\W)r_?e(?!\w)/g); // r_e
+	co.push('9.10938291e-31 kg'); re_co.push(/(\W)m_?e(?!\w)/g); // m_e
+	co.push('1.672621777e-27 kg'); re_co.push(/(\W)m_?p(?!\w)/g); // m_p
+	co.push('6.02214129e23 mol^(-1)'); re_co.push(/(\W)N_?A(?!\w)/g); // N_A
+	co.push('1.3806488e-23 J*K^(-1)'); re_co.push(/(\W)k_?B(?!\w)/g); // k_B
+	co.push('3.141592653589793'); re_co.push(/(\W)pi(?!\w)/gi); // pi
+	co.push('7.2973525698e-3'); re_co.push(/(\W)alpha(?!\w)/g); // alpha
+	
+	// SI units or similar
+	var un=["m","kg","s","A","K","mol","cd","rad"];
+	var re_u1=[], re_u2=[], rf=[], ru=[];
+	re_u1.push(/[Mm]eters?$/);re_u2.push(/m$/); ru.push([1,0,0,0,0,0,0,0]); rf.push(1);
+	re_u1.push(/[Gg]rams?$/);   re_u2.push(/g$/); ru.push([0,1,0,0,0,0,0,0]); rf.push(1e-3);
+	re_u1.push(/[Ss]econds?$/); re_u2.push(/s$/); ru.push([0,0,1,0,0,0,0,0]); rf.push(1);
+	re_u1.push(/[Aa]mperes?$/); re_u2.push(/A$/); ru.push([0,0,0,1,0,0,0,0]); rf.push(1);
+	re_u1.push(/[Kk]elvins?$/); re_u2.push(/K$/); ru.push([0,0,0,0,1,0,0,0]); rf.push(1);
+	re_u1.push(/[Mm]oles?$/); re_u2.push(/mol$/); ru.push([0,0,0,0,0,1,0,0]); rf.push(1);
+	re_u1.push(/[Cc]andelas?$/); re_u2.push(/cd$/); ru.push([0,0,0,0,0,0,1,0]); rf.push(1);
+	re_u1.push(/[Rr]adians?$/); re_u2.push(/rad$/); ru.push([0,0,0,0,0,0,0,1]); rf.push(1);
+	re_u1.push(/[Hh]ertz$/);   re_u2.push(/Hz$/);ru.push([0,0,-1,0,0,0,0,0]); rf.push(1);
+	re_u1.push(/[Nn]ewtons?$/); re_u2.push(/N$/);ru.push([1,1,-2,0,0,0,0,0]); rf.push(1);
+	re_u1.push(/[Pp]ascals?$/);re_u2.push(/Pa$/);ru.push([-1,1,-2,0,0,0,0,0]); rf.push(1);
+	re_u1.push(/[Jj]oules?$/);  re_u2.push(/J$/);ru.push([2,1,-2,0,0,0,0,0]); rf.push(1);
+	re_u1.push(/[Ww]atts?$/);   re_u2.push(/W$/);ru.push([2,1,-3,0,0,0,0,0]); rf.push(1);
+	re_u1.push(/[Cc]oulombs?$/);re_u2.push(/C$/); ru.push([0,0,1,1,0,0,0,0]); rf.push(1);
+	re_u1.push(/[Vv]olts?$/);   re_u2.push(/V$/);ru.push([2,1,-3,-1,0,0,0,0]); rf.push(1);
+	re_u1.push(/[Ff]arads?$/);  re_u2.push(/F$/);ru.push([-2,-1,4,2,0,0,0,0]); rf.push(1);
+	re_u1.push(/[Oo]hms?$/);  re_u2.push(/ohm$/);ru.push([2,1,-3,-2,0,0,0,0]); rf.push(1);
+	re_u1.push(/[Ss]iemens$/);  re_u2.push(/S$/);ru.push([-2,-1,3,2,0,0,0,0]); rf.push(1);
+	re_u1.push(/[Ww]ebers?$/); re_u2.push(/Wb$/);ru.push([2,1,-2,-1,0,0,0,0]); rf.push(1);
+	re_u1.push(/[Tt]eslas?$/);  re_u2.push(/T$/);ru.push([0,1,-2,-1,0,0,0,0]); rf.push(1);
+	re_u1.push(/[Gg]auss$/);  re_u2.push(/ /);ru.push([0,1,-2,-1,0,0,0,0]); rf.push(1e-4);
+	re_u1.push(/[Hh]enrys?$/);  re_u2.push(/H$/);ru.push([2,1,-2,-2,0,0,0,0]); rf.push(1);
+	re_u1.push(/[Ll]itres?$/);re_u2.push(/[lL]$/);ru.push([3,0,0,0,0,0,0,0]); rf.push(1e-3);
+	re_u1.push(/[Tt]onnes?$/);  re_u2.push(/t$/); ru.push([0,1,0,0,0,0,0,0]); rf.push(1e3);
+	re_u1.push(/[Ee]lectron[Vv]olts?$/);re_u2.push(/eV$/);ru.push([2,1,-2,0,0,0,0,0]); rf.push(1.60217653e-19);
+	re_u1.push(/bars?$/);       re_u2.push(/bar$/);ru.push([-1,1,-2,0,0,0,0,0]); rf.push(1e5);
+	var nu=ru.length;
+	
+	// SI prefixes
+	var re_pr1=[], re_pr2=[], pr=[];
+	re_pr1.push(/^[Dd]eca$/); re_pr2.push(/^da$/); pr.push(1e1);
+	re_pr1.push(/^[Hh]ecto$/); re_pr2.push(/^h$/); pr.push(1e2);
+	re_pr1.push(/^[Kk]ilo$/); re_pr2.push(/^k$/); pr.push(1e3);
+	re_pr1.push(/^[Mm]ega$/); re_pr2.push(/^M$/); pr.push(1e6);
+	re_pr1.push(/^[Gg]iga$/); re_pr2.push(/^G$/); pr.push(1e9);
+	re_pr1.push(/^[Tt]era$/); re_pr2.push(/^T$/); pr.push(1e12);
+	re_pr1.push(/^[Pp]eta$/); re_pr2.push(/^P$/); pr.push(1e15);
+	re_pr1.push(/^[Ee]xa$/); re_pr2.push(/^E$/); pr.push(1e18);
+	re_pr1.push(/^[Zz]etta$/); re_pr2.push(/^Z$/); pr.push(1e21);
+	re_pr1.push(/^[Yy]otta$/); re_pr2.push(/^Y$/); pr.push(1e24);
+	re_pr1.push(/^[Dd]eci$/); re_pr2.push(/^d$/); pr.push(1e-1);
+	re_pr1.push(/^[Cc]enti$/); re_pr2.push(/^c$/); pr.push(1e-2);
+	re_pr1.push(/^[Mm]illi$/); re_pr2.push(/^m$/); pr.push(1e-3);
+	re_pr1.push(/^[Mm]icro$/); re_pr2.push(/^[µu]$/); pr.push(1e-6);
+	re_pr1.push(/^[Nn]ano$/); re_pr2.push(/^n$/); pr.push(1e-9);
+	re_pr1.push(/^[Pp]ico$/); re_pr2.push(/^p$/); pr.push(1e-12);
+	re_pr1.push(/^[Ff]emto$/); re_pr2.push(/^f$/); pr.push(1e-15);
+	re_pr1.push(/^[Aa]tto$/); re_pr2.push(/^a$/); pr.push(1e-18);
+	re_pr1.push(/^[Zz]epto$/); re_pr2.push(/^z$/); pr.push(1e-21);
+	re_pr1.push(/^[Yy]octo$/); re_pr2.push(/^y$/); pr.push(1e-24);
+	var npr=pr.length;
+	
+	// Other units
+	re_u1.push(/^[Hh]ectares?$|^ha$/); ru.push([2,0,0,0,0,0,0,0]); rf.push(1e4);
+	re_u1.push(/^[Aa]res?$|^a$/); ru.push([2,0,0,0,0,0,0,0]); rf.push(100);
+	re_u1.push(/^[Dd]egrees?$|^deg$/); ru.push([0,0,0,0,0,0,0,1]); rf.push(0.017453292519943295);
+	re_u1.push(/^[Mm]inutes?$|^min$/); ru.push([0,0,1,0,0,0,0,0]); rf.push(60);
+	re_u1.push(/^[Hh]ours?$/); ru.push([0,0,1,0,0,0,0,0]); rf.push(3600);
+	re_u1.push(/^[Dd]ays?$|^d/); ru.push([0,0,1,0,0,0,0,0]); rf.push(86400);
+	re_u1.push(/angstroms?$/); ru.push([1,0,0,0,0,0,0,0]); rf.push(1e-10);
+	re_u1.push(/^(?:am)?u$/); ru.push([0,1,0,0,0,0,0,0]); rf.push(1.66053886e-27);
+	re_u1.push(/^[Ii]nch(?:es)?$$/); ru.push([1,0,0,0,0,0,0,0]); rf.push(0.0254);
+	re_u1.push(/^[Ff]oot$|^[Ff]eet$/); ru.push([1,0,0,0,0,0,0,0]); rf.push(0.3048);
+	re_u1.push(/^[Yy]ards?$/); ru.push([1,0,0,0,0,0,0,0]); rf.push(0.9144);
+	re_u1.push(/^[Mm]iles?$|^mi$/); ru.push([1,0,0,0,0,0,0,0]); rf.push(1609.344);
+	re_u1.push(/^[Aa]cres?$/); ru.push([2,0,0,0,0,0,0,0]); rf.push(4046.8564224);
+	re_u1.push(/barns?$/); ru.push([2,0,0,0,0,0,0,0]); rf.push(1e-28);
+	re_u1.push(/^[Pp]arsecs?$/); ru.push([1,0,0,0,0,0,0,0]); rf.push(3.085677581491e+16);
+	re_u1.push(/^[Ll]ight-?[Yy]ears?$|^ly$/); ru.push([1,0,0,0,0,0,0,0]); rf.push(9460730472580800);
+	re_u1.push(/^[Ee]rgs?$/); ru.push([2,1,-2,0,0,0,0,0]); rf.push(1e-7);
+	re_u1.push(/^atmospheres?$|^atm$/); ru.push([-1,1,-2,0,0,0,0,0]); rf.push(100);
+	var nu1=ru.length;
+	
+	// other regular expressions
+	var re_err=/[ a-zA-Z0-9=;+\-^*_\/().]/g, re_in=/ in /, re_eq=/(.+)=/,
+		re_ep =/[Ee]\+?(?=[0-9])/g, re_em=/[Ee]-(?=[0-9])/g,
+		re_ep1=/#/g, re_em1=/@/g,
+		re_pm=/([^\^])-/g, re_s=/\s/g, re_ss=/\(\+/g, re_par=/^\s*\((.+)\)\s*$/g,
+		re_unit1=/([0-9\).])\s*([A-Za-z]+)/g,
+		re_unit2=/[A-Za-z]/, re_unit3=/([A-Za-z]+)/g;
+
+-->
+</script>
 </head>
 
 <body>
@@ -146,121 +745,13 @@
 		</div>
 	</div>
 </div>
+
 <script language="javascript">
 <!--
-
-	// constants
-	var co=[], re_co=[];
-	co.push('299792458. m*s^(-1)'); re_co.push(/(\W)c(?!\w)/g); // c
-	co.push('6.67384e-11 m^3*kg^(-1)*s^(-2)'); re_co.push(/(\W)G(?!\w)/g); // G
-	co.push('6.62606957e-34 J*s'); re_co.push(/(\W)h(?!\w)/g); // h
-	co.push('1.256637061e-6 N*A^(-2)'); re_co.push(/(\W)mu_?0(?!\w)/g); // mu0
-	co.push('8.854187817e-12 F*m^(-1)'); re_co.push(/(\W)e(?:ps)?_?0(?!\w)/g); // eps0
-	co.push('1.602176565e-19 C'); re_co.push(/([^\w\.])(?:q_?)?e(?!\w)/g); // q_e
-	co.push('5.2917721092e-11 m'); re_co.push(/(\W)a_?0(?!\w)/g); // a_0
-	co.push('2.8179403267e-15 m'); re_co.push(/(\W)r_?e(?!\w)/g); // r_e
-	co.push('9.10938291e-31 kg'); re_co.push(/(\W)m_?e(?!\w)/g); // m_e
-	co.push('1.672621777e-27 kg'); re_co.push(/(\W)m_?p(?!\w)/g); // m_p
-	co.push('6.02214129e23 mol^(-1)'); re_co.push(/(\W)N_?A(?!\w)/g); // N_A
-	co.push('1.3806488e-23 J*K^(-1)'); re_co.push(/(\W)k_?B(?!\w)/g); // k_B
-	co.push('3.141592653589793'); re_co.push(/(\W)pi(?!\w)/gi); // pi
-	co.push('7.2973525698e-3'); re_co.push(/(\W)alpha(?!\w)/g); // alpha
-	
-	// SI units or similar
-	var un=["m","kg","s","A","K","mol","cd","rad"];
-	var re_u1=[], re_u2=[], rf=[], ru=[];
-	re_u1.push(/[Mm]eters?$/);re_u2.push(/m$/); ru.push([1,0,0,0,0,0,0,0]); rf.push(1);
-	re_u1.push(/[Gg]rams?$/);   re_u2.push(/g$/); ru.push([0,1,0,0,0,0,0,0]); rf.push(1e-3);
-	re_u1.push(/[Ss]econds?$/); re_u2.push(/s$/); ru.push([0,0,1,0,0,0,0,0]); rf.push(1);
-	re_u1.push(/[Aa]mperes?$/); re_u2.push(/A$/); ru.push([0,0,0,1,0,0,0,0]); rf.push(1);
-	re_u1.push(/[Kk]elvins?$/); re_u2.push(/K$/); ru.push([0,0,0,0,1,0,0,0]); rf.push(1);
-	re_u1.push(/[Mm]oles?$/); re_u2.push(/mol$/); ru.push([0,0,0,0,0,1,0,0]); rf.push(1);
-	re_u1.push(/[Cc]andelas?$/); re_u2.push(/cd$/); ru.push([0,0,0,0,0,0,1,0]); rf.push(1);
-	re_u1.push(/[Rr]adians?$/); re_u2.push(/rad$/); ru.push([0,0,0,0,0,0,0,1]); rf.push(1);
-	re_u1.push(/[Hh]ertz$/);   re_u2.push(/Hz$/);ru.push([0,0,-1,0,0,0,0,0]); rf.push(1);
-	re_u1.push(/[Nn]ewtons?$/); re_u2.push(/N$/);ru.push([1,1,-2,0,0,0,0,0]); rf.push(1);
-	re_u1.push(/[Pp]ascals?$/);re_u2.push(/Pa$/);ru.push([-1,1,-2,0,0,0,0,0]); rf.push(1);
-	re_u1.push(/[Jj]oules?$/);  re_u2.push(/J$/);ru.push([2,1,-2,0,0,0,0,0]); rf.push(1);
-	re_u1.push(/[Ww]atts?$/);   re_u2.push(/W$/);ru.push([2,1,-3,0,0,0,0,0]); rf.push(1);
-	re_u1.push(/[Cc]oulombs?$/);re_u2.push(/C$/); ru.push([0,0,1,1,0,0,0,0]); rf.push(1);
-	re_u1.push(/[Vv]olts?$/);   re_u2.push(/V$/);ru.push([2,1,-3,-1,0,0,0,0]); rf.push(1);
-	re_u1.push(/[Ff]arads?$/);  re_u2.push(/F$/);ru.push([-2,-1,4,2,0,0,0,0]); rf.push(1);
-	re_u1.push(/[Oo]hms?$/);  re_u2.push(/ohm$/);ru.push([2,1,-3,-2,0,0,0,0]); rf.push(1);
-	re_u1.push(/[Ss]iemens$/);  re_u2.push(/S$/);ru.push([-2,-1,3,2,0,0,0,0]); rf.push(1);
-	re_u1.push(/[Ww]ebers?$/); re_u2.push(/Wb$/);ru.push([2,1,-2,-1,0,0,0,0]); rf.push(1);
-	re_u1.push(/[Tt]eslas?$/);  re_u2.push(/T$/);ru.push([0,1,-2,-1,0,0,0,0]); rf.push(1);
-	re_u1.push(/[Gg]auss$/);  re_u2.push(/ /);ru.push([0,1,-2,-1,0,0,0,0]); rf.push(1e-4);
-	re_u1.push(/[Hh]enrys?$/);  re_u2.push(/H$/);ru.push([2,1,-2,-2,0,0,0,0]); rf.push(1);
-	re_u1.push(/[Ll]itres?$/);re_u2.push(/[lL]$/);ru.push([3,0,0,0,0,0,0,0]); rf.push(1e-3);
-	re_u1.push(/[Tt]onnes?$/);  re_u2.push(/t$/); ru.push([0,1,0,0,0,0,0,0]); rf.push(1e3);
-	re_u1.push(/[Ee]lectron[Vv]olts?$/);re_u2.push(/eV$/);ru.push([2,1,-2,0,0,0,0,0]); rf.push(1.60217653e-19);
-	re_u1.push(/bars?$/);       re_u2.push(/bar$/);ru.push([-1,1,-2,0,0,0,0,0]); rf.push(1e5);
-	var nu=ru.length;
-	
-	// SI prefixes
-	var re_pr1=[], re_pr2=[], pr=[];
-	re_pr1.push(/^[Dd]eca$/); re_pr2.push(/^da$/); pr.push(1e1);
-	re_pr1.push(/^[Hh]ecto$/); re_pr2.push(/^h$/); pr.push(1e2);
-	re_pr1.push(/^[Kk]ilo$/); re_pr2.push(/^k$/); pr.push(1e3);
-	re_pr1.push(/^[Mm]ega$/); re_pr2.push(/^M$/); pr.push(1e6);
-	re_pr1.push(/^[Gg]iga$/); re_pr2.push(/^G$/); pr.push(1e9);
-	re_pr1.push(/^[Tt]era$/); re_pr2.push(/^T$/); pr.push(1e12);
-	re_pr1.push(/^[Pp]eta$/); re_pr2.push(/^P$/); pr.push(1e15);
-	re_pr1.push(/^[Ee]xa$/); re_pr2.push(/^E$/); pr.push(1e18);
-	re_pr1.push(/^[Zz]etta$/); re_pr2.push(/^Z$/); pr.push(1e21);
-	re_pr1.push(/^[Yy]otta$/); re_pr2.push(/^Y$/); pr.push(1e24);
-	re_pr1.push(/^[Dd]eci$/); re_pr2.push(/^d$/); pr.push(1e-1);
-	re_pr1.push(/^[Cc]enti$/); re_pr2.push(/^c$/); pr.push(1e-2);
-	re_pr1.push(/^[Mm]illi$/); re_pr2.push(/^m$/); pr.push(1e-3);
-	re_pr1.push(/^[Mm]icro$/); re_pr2.push(/^[µu]$/); pr.push(1e-6);
-	re_pr1.push(/^[Nn]ano$/); re_pr2.push(/^n$/); pr.push(1e-9);
-	re_pr1.push(/^[Pp]ico$/); re_pr2.push(/^p$/); pr.push(1e-12);
-	re_pr1.push(/^[Ff]emto$/); re_pr2.push(/^f$/); pr.push(1e-15);
-	re_pr1.push(/^[Aa]tto$/); re_pr2.push(/^a$/); pr.push(1e-18);
-	re_pr1.push(/^[Zz]epto$/); re_pr2.push(/^z$/); pr.push(1e-21);
-	re_pr1.push(/^[Yy]octo$/); re_pr2.push(/^y$/); pr.push(1e-24);
-	var npr=pr.length;
-	
-	// Other units
-	re_u1.push(/^[Hh]ectares?$|^ha$/); ru.push([2,0,0,0,0,0,0,0]); rf.push(1e4);
-	re_u1.push(/^[Aa]res?$|^a$/); ru.push([2,0,0,0,0,0,0,0]); rf.push(100);
-	re_u1.push(/^[Dd]egrees?$|^deg$/); ru.push([0,0,0,0,0,0,0,1]); rf.push(0.017453292519943295);
-	re_u1.push(/^[Mm]inutes?$|^min$/); ru.push([0,0,1,0,0,0,0,0]); rf.push(60);
-	re_u1.push(/^[Hh]ours?$/); ru.push([0,0,1,0,0,0,0,0]); rf.push(3600);
-	re_u1.push(/^[Dd]ays?$|^d/); ru.push([0,0,1,0,0,0,0,0]); rf.push(86400);
-	re_u1.push(/angstroms?$/); ru.push([1,0,0,0,0,0,0,0]); rf.push(1e-10);
-	re_u1.push(/^(?:am)?u$/); ru.push([0,1,0,0,0,0,0,0]); rf.push(1.66053886e-27);
-	re_u1.push(/^[Ii]nch(?:es)?$$/); ru.push([1,0,0,0,0,0,0,0]); rf.push(0.0254);
-	re_u1.push(/^[Ff]oot$|^[Ff]eet$/); ru.push([1,0,0,0,0,0,0,0]); rf.push(0.3048);
-	re_u1.push(/^[Yy]ards?$/); ru.push([1,0,0,0,0,0,0,0]); rf.push(0.9144);
-	re_u1.push(/^[Mm]iles?$|^mi$/); ru.push([1,0,0,0,0,0,0,0]); rf.push(1609.344);
-	re_u1.push(/^[Aa]cres?$/); ru.push([2,0,0,0,0,0,0,0]); rf.push(4046.8564224);
-	re_u1.push(/barns?$/); ru.push([2,0,0,0,0,0,0,0]); rf.push(1e-28);
-	re_u1.push(/^[Pp]arsecs?$/); ru.push([1,0,0,0,0,0,0,0]); rf.push(3.085677581491e+16);
-	re_u1.push(/^[Ll]ight-?[Yy]ears?$|^ly$/); ru.push([1,0,0,0,0,0,0,0]); rf.push(9460730472580800);
-	re_u1.push(/^[Ee]rgs?$/); ru.push([2,1,-2,0,0,0,0,0]); rf.push(1e-7);
-	re_u1.push(/^atmospheres?$|^atm$/); ru.push([-1,1,-2,0,0,0,0,0]); rf.push(100);
-	var nu1=ru.length;
-	
-	// other regular expressions
-	var re_err=/[ a-zA-Z0-9=;+\-^*_\/().]/g, re_in=/ in /, re_eq=/(.+)=/,
-		re_ep =/[Ee]\+?(?=[0-9])/g, re_em=/[Ee]-(?=[0-9])/g,
-		re_ep1=/#/g, re_em1=/@/g,
-		re_pm=/([^\^])-/g, re_s=/\s/g, re_ss=/\(\+/g, re_par=/^\s*\((.+)\)\s*$/g,
-		re_unit1=/([0-9\).])\s*([A-Za-z]+)/g,
-		re_unit2=/[A-Za-z]/, re_unit3=/([A-Za-z]+)/g;
 		
 	// HTML elements
 	var ein  = document.getElementById("in" );
 	var eout = document.getElementById("out");
-	
-	// Function for testing equal arrays (must not have subarrays)
-	function arrayequal(a,b) {
-		var na=a.length, nb=b.length;
-		if(na!=nb) {return false;}
-		for(var i=0;i<na;i+=1) {if(a[i]!=b[i]){return false;}}
-		return true;
-	}
 
 	// Main callback, when Enter is pressed
 	function go(e) {
@@ -274,13 +765,15 @@
 		for(var i=0; i<co.length; i+=1) {s=s.replace(re_co[i],"$1("+co[i]+")");}
 		return s;
 	}
-	
+
 	// Initiate calculation
+	var graph;
 	function calcstart() {
 		eout.innerHTML = "";
 		
 		var sin=ein.value, sout ="", varout=[], varname,
-			i,j,k,l,u,v,us,newu,newu0,s,ss,sss,tm,tp,ok;
+			i,j,k,l,u,v,us,newu,newu0,s,ss,sss,tm,tp,ok,
+			gcont,g,gw,gh,rect,zoom,lx,ly,x,y,w,h,f,b;
 		
 		// wrong characters
 		var err=sin.replace(re_err,'');
@@ -295,10 +788,18 @@
 			s=sin[j];
 			if(s.trim().length==0) {continue}
 			
+			// if begins with "graph", then graph something
+			graph=false;
+			if(s.trim().substring(0,6)=="graph ") {
+				graph=true;
+				s=s.trim().substring(6);
+			}
+			
 			// if "in" is included, it means a change of units
 			s=s.replace(re_in,";").split(';');
 			newu="";
 			if(s.length>1) {
+				if(graph) { eout.innerHTML = "Cannot graph and change units."; return; }
 				newu0=s[1];
 				newu=newu0.replace(re_s,"");
 				newu="("+newu+")"; // newu contains the target units
@@ -309,6 +810,7 @@
 			s=s.replace(re_eq,"$1;").split(';');
 			varname="";
 			if(s.length>1) {
+				if(graph) { eout.innerHTML = "Cannot graph an assignment."; return; }
 				varname=s[0].trim(); s[0]=s[1]; // save variable name
 				if(!/^[a-zA-Z]+\w*$/.test(varname)) { // verify variable name
 					eout.innerHTML = "Unaccepted variable name: "+varname; return; }
@@ -340,6 +842,41 @@
 			// If the output contains "Error:" then it has an error.
 			// Else, we make the output nice.
 			if(s[0]!="Error:") {
+				if(graph) {
+					// Create the svg container
+					gcont=document.createElement("div"); g=document.createElementNS(svgns,"svg");
+					gcont.className="graphcont";
+					gcont.appendChild(g); eout.appendChild(gcont);
+					gw=gcont.clientWidth ; g.setAttribute("width" ,gw+"px");
+					gh=gcont.clientHeight; g.setAttribute("height",gh+"px");
+					// We create "plot" which groups all elements in the graph for easy scrolling
+					plot=g.Group();
+					// Create a function that represents the curve, and find the best boundaries
+					plot.curveEq = new Function("x","return "+s[0].split("|").join("x"));
+					//b=[-1,1,-1,1];
+					b=findBestBounds(plot);
+					alert(b);
+					if(!b) { eout.innerHTML = "Error:<br/>cannot graph the function."; }
+					plot.init(b[0],b[1],b[2],b[3],gw,gh); // initialize the plot
+					// Create a transparent overlay for detecting mousedown
+					rect=g.Rect(0,0,gw,gh,"transparent","transparent",0);
+					rect.onmousedown = moveBegin;
+					// Create zoom buttons
+					x=5;y=5;w=14;h=14;
+					g.ZoomButton(x,y,w,h,"+").z=[1.1,1.1];
+					g.ZoomButton(x,y+h,w,h,"-").z=[1/1.1,1/1.1];
+					x+=w*2; w*=2/3; h*=2/3;
+					g.ZoomButton(x,y,w,h,"+").z=[1,1.1];
+					g.ZoomButton(x,y+2*h,w,h,"-").z=[1,1/1.1];
+					x-=w; y+=h;
+					g.ZoomButton(x+2*w,y,w,h,"+").z=[1.1,1];
+					g.ZoomButton(x,y,w,h,"-").z=[1/1.1,1];
+					// Draw the plot
+					plot.update();
+					//findBestBounds(f,plot);
+					continue;
+				}
+			
 				// Now we make units readable
 				u=""; v=s[0];
 				if(newu=="") { // if no change of units requested,
@@ -396,7 +933,7 @@
 					if(v=="1") { v=ss[1]; }
 					else { v=v+" &#215; "+ss[1]; }
 				}
-				
+					
 				// Manage storing to a variable
 				if(varname.length>0) {
 					us=" ";
@@ -458,9 +995,11 @@
 					
 				case ')':
 					sss=s.substring(j,i); j=i+1; // get the string before ")"
+					
 					sss=segment(sss); // Evaluate the string as math expression.
 					if(sss[0]=="Error:") return sss;
 					ss.push(sss[0]); kk.push(k); uu.push(sss[1]); // Store result.
+					
 					// now ss contains a list of previous values
 					// uu contains a list of previous units
 					// kk contains a list of previous "parenthesis levels"
@@ -533,8 +1072,12 @@
 					} 
 					
 					// Try to evaluate the final expression in parenthesis.
-					try{ss.push(""+eval(sss))}
-					catch(e) {return ["Error:","cannot evaluate "+sss];}
+					if(graph && sss.indexOf("|")>=0) {
+						ss.push(sss);
+					} else {						
+						try{ss.push(""+eval(sss))}
+						catch(e) {return ["Error:","cannot evaluate "+sss];}
+					}
 					kk.push(k); uu.push(uuu[0]); // store the result.
 					break;
 					
@@ -558,6 +1101,11 @@
 	// Analyzes a segment with either a math expression or units.
 	function segment(sss) {
 		var i=sss.search(re_unit2),j,k,l,ok;
+
+		// case of the "x" variable
+		if(graph && (sss=="x" || sss=="-x")) {
+			return [sss.replace("x","(|)"), [0,0,0,0,0,0,0,0]];
+		} 
 
 		if(i<0) { // If just a number,
 			sss=[sss,[0,0,0,0,0,0,0,0]]; // indicate no units.
