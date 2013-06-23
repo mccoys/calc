@@ -111,29 +111,30 @@
 	// Functions controling the SVG plot
 	function findBestBounds(plot) { // Find the best plot limits automatically
 		var xm,xM,ym,yM,f=plot.curveEq;
-		//var m=Math.log(Number.MIN_VALUE*1000),M=Math.log(Number.MAX_VALUE*0.001);
 		var m=Math.log(1e-50),M=Math.log(1e20);
 		var i,j,k,kk,lnx,x,y,prevx,dxm,dxM,dx,dy,okm=false,okM=false, prec;
 		// The first step is to find a range containing finite values of the function
 		for(k=1000; k<=100000; k*=10) { // several attemps, refining the resolution each time
+			dx=(M-m)/k;
 			// First, negative (positive) numbers for finding left (right) boundary
-			for(lnx=M; lnx>=m; lnx-=(M-m)/k) {
+			for(lnx=M; lnx>=m; lnx-=dx) {
 				if(okm && okM) { break; }
 				x=Math.exp(lnx);
-				if(!okm && isFinite(f(-x))) { xm=[-(prevx||x),-x]; okm=true; }
-				if(!okM && isFinite(f( x))) { xM=[ x,  prevx||x ]; okM=true; }
+				if(!okm && Math.abs(f(-x))<1e30) { xm=[-(prevx||x),-x]; okm=true; }
+				if(!okM && Math.abs(f( x))<1e30) { xM=[ x,  prevx||x ]; okM=true; }
 				prevx=x;
 			}
 			// Second, positive (negative) numbers for finding left (right) boundary
-			for(lnx=m; lnx>=M; lnx+=(M-m)/k) {
+			for(lnx=m; lnx<=M; lnx+=dx) {
 				if(okm && okM) { break; }
 				x=Math.exp(lnx);
-				if(!okm && isFinite(f( x))) { xm=[  prevx||x , x]; okm=true; }
-				if(!okM && isFinite(f(-x))) { xM=[-x,-(prevx||x)]; okM=true; }
+				if(!okm && Math.abs(f( x))<1e30) { xm=[  prevx||x , x]; okm=true; }
+				if(!okM && Math.abs(f(-x))<1e30) { xM=[-x,-(prevx||x)]; okM=true; }
 				prevx=x;
 			}
 			if(okm && okM) { break; }
 		}
+
 		// If could not find finite numbers, then error
 		if(!okm || !okM) { return false; }
 		// Refine the xm and xM locations
@@ -146,50 +147,51 @@
 			if(!okM && xM[1]-xM[0]<=dxM) { okM=true; }
 			if(!okm) {
 				x=(xm[0]+xm[1])*.5;
-				if(isFinite(f(x))) { xm[1]=x; } else { xm[0]=x; }
+				if(Math.abs(f(x))<1e100) { xm[1]=x; } else { xm[0]=x; }
 			}
 			if(!okM) {
 				x=(xM[0]+xM[1])*.5;
-				if(isFinite(f(x))) { xM[0]=x; } else { xM[1]=x; }
+				if(Math.abs(f(x))<1e100) { xM[0]=x; } else { xM[1]=x; }
 			}
 		}
 		xm=xm[1]; xM=xM[0]; // Now we have the global x boundaries
-		
-		// Adaptatively find best range
+
+		// Adaptatively find best x range
 		plot.x_=new Array(5); plot.y_=new Array(5);
-		// Firs, we define a function for adaptative refinement
+		// First, we define a function for adaptative refinement
 		plot.adaptative = function(x0,x1,depth,eps) {
-			if(depth>=this.maxdepth) return depth;
+			if(depth>=this.maxdepth) {return depth;}
 			this.dx=(x1-x0)*0.25;
 			this.x_[0]=x0; this.x_[1]=x0+this.dx; this.x_[2]=x0+2*this.dx; this.x_[3]=x0+3*this.dx; this.x_[4]=x1;
 			this.y0=Number.MAX_VALUE; this.y1=-Number.MAX_VALUE;
 			for(this.k=0;this.k<5;this.k+=1) {
-				this.y_[k]=this.curveEq(this.x_[k]);
+				this.y_[this.k]=this.curveEq(this.x_[this.k]);
 				if(this.y_[this.k]<this.y0) { this.y0=this.y_[this.k]; } // find local min
 				if(this.y_[this.k]>this.y1) { this.y1=this.y_[this.k]; } // find local max
 			}
 			if(this.y0*this.y1>0) { // pb of numerical precision
-				if(Math.abs(this.y1-this.y0)<1e-6*Math.max(Math.abs(this.y0),Math.abs(this.y1))) {return 0;}
+				if(Math.abs(this.y1-this.y0)<1e-6*Math.max(Math.abs(this.y0),Math.abs(this.y1))) {return depth;}
 			}
-			this.k=1; i=this.y_[1]-this.y_[0];
+			this.k=1; this.i=this.y_[1]-this.y_[0];
 			while(this.k<4) {
 				this.j=this.y_[this.k+1]-this.y_[this.k];
 				if(this.i*this.j<0) {break;}
 				this.i=this.j; this.k+=1;
 			}
 			this.refine=false;
-			if(this.k>=4) { // if oscillating, refine
+			if(this.k<4) { // if oscillating, refine
 				this.refine=true;
-			} else { // if not oscillating much, check if smooth enough
-				this.q1=y[0]-5.*y[1]+19.*y[2]+9.*y[3]; // first quadrature
-				this.q2=10.*y[2]+16.*y[3]-2.*y[4]; // second quadrature
-				if(Math.abs(this.q2-this.q1)>eps*this.q2) { this.refine=true; }
+			} else { // if not oscillating, check if smooth enough
+				this.q1=this.y_[0]-5.*this.y_[1]+19.*this.y_[2]+9.*this.y_[3]; // first quadrature
+				this.q2=10.*this.y_[2]+16.*this.y_[3]-2.*this.y_[4]; // second quadrature
+				if(Math.abs(this.q2-this.q1)>eps*Math.abs(this.q2)) { this.refine=true; }
 			}
 			if(this.refine) {
-				return Math.max(depth, Math.max(
+				return Math.max(
 					this.adaptative(x0,this.x_[2],depth+1,eps*2),
-					this.adaptative(this.x_[2],x1,depth+1,eps*2) ));
+					this.adaptative(this.x_[2],x1,depth+1,eps*2) );
 			}
+			return depth;
 		}
 		// Define initial x values
 		x=new Array(100); var u=new Array(99);
@@ -198,12 +200,11 @@
 		var ok=false, kmax=100, i0, i1, xlim, xmax;
 		plot.maxdepth=1;
 		for(k=0; k<kmax; k+=1) {
-			for(i=0; i<99; i+=1) { u[i]=plot.adaptative(x[i],x[i+1],0,1e-7); }
-			console.log(k);
+			for(i=0; i<99; i+=1) { u[i]=plot.adaptative(x[i],x[i+1],0,1e-6); }
 			i0=u.indexOf(1);
 			if(i0<0) {
-				if(!ok) { x.shrinkTowards0(0.01); }
-				else    { x.shrinkTowards0(1.5); }
+				if(!ok) { x.shrinkTowards0(0.02); }
+				else    { x.linspace(x[1],x[98]); }
 			} else {
 				ok=true; i1=u.lastIndexOf(1);
 				if(i0==0 && i1==98) { break; }
@@ -212,9 +213,9 @@
 			xmax=Math.max(Math.abs(x[99]),Math.abs(x[0]));
 			if(Math.abs(x[99]-x[0])<Math.max(1e-20, 0.01*xmax)) { k=kmax; break; }
 		}
-		return [k,k,k,k];
 		xlim=adjustWith0(x[0], x[99], k>=kmax-1);
 		xm=Math.max(xm,xlim[0]); xM=Math.min(xM,xlim[1]);
+		//alert(xm+"  "+xM);
 		// Second refinement
 		if(k<kmax-1) {
 			x.linspace(xm,xM);
@@ -223,11 +224,11 @@
 			while(k<kmax) {
 				k+=1;
 				if(k>kmax-5 && plot.maxdepth<9) { k=1; plot.maxdepth+=1; }
-				utot=0; umax=0;
+				utot=0; umax=0; v[99]=0;
 				for(i=0; i<99; i+=1) {
-					u[i]=plot.adaptative(x[i],x[i+1],0,1e-6);
+					u[i]=plot.adaptative(x[i],x[i+1],0,4e-7);
 					if(u[i]>umax) { umax=u[i]; }
-					v[i]=(u[i]>=plot.maxdepth);
+					v[i]=(u[i]>=plot.maxdepth)?1:0;
 					if(v[i]) { utot+=1; }
 				}
 				// utot is the number of maximal refinement locations
@@ -235,7 +236,7 @@
 					i0=v.indexOf(1); i1=v.lastIndexOf(1);
 					// If there are several places where max-refinement has been found,
 					// we calculate vtot, the number of "switches" from maximal to non-maximal refinement
-					v0=0; vtot=0; v[99]=0;
+					v0=0; vtot=0;
 					for(j=0; j<100; j+=1) {
 						v1=v[j];
 						if(v0!=v1) { vtot+=1; v[j]=1; } else { v[j]=0; }
@@ -243,12 +244,13 @@
 					}
 					// now j0 the second switch, j1 the penultimate switch
 					if(vtot<=3 || vtot>20) {
-						if(utot>=100) {
+						if(utot>=99) {
 							x.shrinkTowards0(Math.max(0.05,Math.min(0.9,Math.pow(2,-plot.maxdepth*(utot/100)))));
 						} else {
+							if(i0==1 && i1==98) { break; }
 							x.linspace(x[i0],x[i1+1]);
+							if(utot<50 && plot.maxdepth<9) { k=1; plot.maxdepth+=1; }
 						}
-						if(utot<50 && plot.maxdepth<9) { k=1; plot.maxdepth+=1; }
 					} else if(vtot>6) {
 						// If a bit too many switches, we remove the first and last ones
 						j0=v.indexOf(1); j0=v.indexOf(1,j0+1); // second switch
@@ -259,7 +261,7 @@
 					// If zero or one max-refinement locations found,
 					// then consider reducing the range to the half-width
 					umax*=0.5;
-					for(i=0; i<99; i+=1) { u[i]=(u[i]>=umax); }
+					for(i=0; i<99; i+=1) { u[i]=(u[i]>=umax)?1:0; }
 					i0=u.indexOf(1); i1=u.lastIndexOf(1);
 					if(i0==0 && i1==98) {
 						if(!ok) { ok=true; x.shrinkTowards0(1.001); continue; }
@@ -269,29 +271,31 @@
 				}
 				ok=false;
 				xmax=Math.max(Math.abs(x[99]),Math.abs(x[0]));
-				if(abs(x[99]-x[0])<Math.max(1e-20, 0.01*xmax)) { k=kmax; break; }
+				if(Math.abs(x[99]-x[0])<Math.max(1e-20, 0.01*xmax)) { k=kmax; break; }
 			}
 			xlim=adjustWith0(x[0], x[99], k>=kmax-1);
 			xm=Math.max(xm,xlim[0]); xM=Math.min(xM,xlim[1]);
 		}
-		
+		//return [xm,xM,-1,1];
+
 		// X range is now found.
 		// Find best Y range
 		y=new Array(1000); dx=(xM-xm)/999.;
 		for(k=0;k<999;k+=1) { y[k]=f(xm+dx*k); }
 		y[999]=f(xM);
 		y.sort(function(a,b) {return a-b;});
+		ym=y[0]; yM=y[999];
 		var yh=new Array(11), dk, hmax;
 		for(i=0;i<30;i+=1) {
 			dy=(yM-ym)*0.1;
 			// compute histogram yh in 10 bins
-			yh[0]=0; yh[11]=999; dk=100; hmax=0;
+			yh[0]=0; yh[10]=999; dk=100; hmax=0;
 			for(k=1;k<10;k+=1) {
 				if(yh[k-1]>=999) { yh[k]=999; continue; }
 				dk=Math.ceil((1000-yh[k-1])/(11-k));
 				yh[k]=yh[k-1]; y0=ym+dy*k;
 				while(dk>1) {
-					if(y[yh[k]+dk]>y0) { dk=Math.floor(dk*0.5); }
+					if(yh[k]+dk>998 || y[yh[k]+dk]>y0) { dk=Math.floor(dk*0.5); }
 					else { yh[k]+=dk; }
 				}
 			}
@@ -317,7 +321,9 @@
 		k=-1;
 		do { k+=1; y0=f(xM-dx*k); } while(y0<ym || y0>yM)
 		xM=xM-dx*k;
-				
+		// Final adjustment
+		dx=(xM-xm)/10; xm-=dx; xM+=dx;
+		dy=(yM-ym)/10; ym-=dy; yM+=dy;
 		return [xm,xM,ym,yM];
 	}
 	SVGGElement.prototype.init = function(x1,x2,y1,y2,w,h) { // Define plot limits, scalings etc
@@ -488,11 +494,11 @@
 	// Shrink array towards 0
 	Array.prototype.shrinkTowards0 = function(coeff) {
 		if(this[0]*this[this.length-1]<0) {
-			for(var k=0;k<this.length;k+=1) { this[k]=this[k]*coeff; }
+			for(var k=0;k<this.length;k+=1) { this[k]*=coeff; }
 		} else if(this[0]>=0) {
 			for(var k=1;k<this.length;k+=1) { this[k]=this[0]+(this[k]-this[0])*coeff; }
 		} else {
-			for(var k=0;k<this.length-1;k+=1) { this[k]=this[this.length-1]+(this[k]-this[this.length-1])*coeff; }
+			for(var k=0;k<this.length-2;k+=1) { this[k]=this[this.length-1]+(this[k]-this[this.length-1])*coeff; }
 		}
 	}
 	// Adjust xmin and xmax near 0 to make it nice
@@ -853,9 +859,7 @@
 					plot=g.Group();
 					// Create a function that represents the curve, and find the best boundaries
 					plot.curveEq = new Function("x","return "+s[0].split("|").join("x"));
-					//b=[-1,1,-1,1];
 					b=findBestBounds(plot);
-					alert(b);
 					if(!b) { eout.innerHTML = "Error:<br/>cannot graph the function."; }
 					plot.init(b[0],b[1],b[2],b[3],gw,gh); // initialize the plot
 					// Create a transparent overlay for detecting mousedown
