@@ -204,7 +204,7 @@
 			i0=u.indexOf(1);
 			if(i0<0) {
 				if(!ok) { x.shrinkTowards0(0.02); }
-				else    { x.linspace(x[1],x[98]); }
+				else    { dx=(x[50]-x[49])*0.3; x.linspace(x[0]+dx,x[99]+dx); }
 			} else {
 				ok=true; i1=u.lastIndexOf(1);
 				if(i0==0 && i1==98) { break; }
@@ -231,6 +231,7 @@
 					v[i]=(u[i]>=plot.maxdepth)?1:0;
 					if(v[i]) { utot+=1; }
 				}
+				//alert(u);
 				// utot is the number of maximal refinement locations
 				if(utot>1) {
 					i0=v.indexOf(1); i1=v.lastIndexOf(1);
@@ -245,7 +246,7 @@
 					// now j0 the second switch, j1 the penultimate switch
 					if(vtot<=3 || vtot>20) {
 						if(utot>=99) {
-							x.shrinkTowards0(Math.max(0.05,Math.min(0.9,Math.pow(2,-plot.maxdepth*(utot/100)))));
+							x.shrinkTowards0(Math.max(0.1,Math.min(0.9,Math.pow(2,-plot.maxdepth*(utot/100)))));
 						} else {
 							if(i0==1 && i1==98) { break; }
 							x.linspace(x[i0],x[i1+1]);
@@ -276,7 +277,7 @@
 			xlim=adjustWith0(x[0], x[99], k>=kmax-1);
 			xm=Math.max(xm,xlim[0]); xM=Math.min(xM,xlim[1]);
 		}
-		//return [xm,xM,-1,1];
+		//alert([xm,xM,-1,1]);
 
 		// X range is now found.
 		// Find best Y range
@@ -368,7 +369,7 @@
 			}
 			// Update axes
 			this.ax.sets({"x1":""+m[0]*this.s[0], "x2":""+M[0]*this.s[0]});
-			this.ay.sets({"y1":""+(-m[1]*this.s[1]), "y2":""+(-M[1]*this.s[1])});
+			this.ay.sets({"y1":""+m[1]*this.s[1], "y2":""+M[1]*this.s[1]});
 			// Update ticks and labels
 			var r,j,t,s,n,z1,z2,k,kk,al;
 			al=['NC','MW']; zz=[1,1]; // tick label alignment
@@ -376,8 +377,8 @@
 			if(this.b[0]<2*this.t[0]) { al[1]='ME'; zz[0]=-1; }
 			for(k=0; k<2; k+=1) {
 				kk=(k+1)%2;
-				z1=[ (this.x2-this.x1)/200,-(this.y2-this.y1)/100]; // small offsets for ticks
-				z2=[-(this.x2-this.x1)/200, (this.y2-this.y1)/100];
+				z1=[ (this.x2-this.x1)*0.005,-(this.y2-this.y1)*0.01]; // small offsets for ticks
+				z2=[-(this.x2-this.x1)*0.005, (this.y2-this.y1)*0.01];
 				t = this.ticks[k].childNodes; l=this.tickL[k].childNodes; // get all ticks
 				p=(M[k]-m[k])/this.nt[k]; r=Math.pow(10.,ndec(p));
 				q=Math.floor(Math.sqrt(1.5*(p/r-1))); q=(1+q*q)*r; // now q is tick separation
@@ -385,17 +386,17 @@
 				i=0;
 				for(var z=m[k]-m[k]%q;z<M[k];z+=q) { // for each tick position
 					z1[k]=z; z2[k]=z;
-					t[i].sets({"x1":""+z1[0]*this.s[0],"x2":""+z2[0]*this.s[0],"y1":""+(-z1[1]*this.s[1]),"y2":""+(-z2[1]*this.s[1]),
+					t[i].sets({"x1":""+z1[0]*this.s[0],"x2":""+z2[0]*this.s[0],"y1":""+z1[1]*this.s[1],"y2":""+z2[1]*this.s[1],
 						"stroke-width":z?1:0});
 					s=""; n="";
 					if(p*p>9) { // if too long number, display with power of 10
-							s=tickformat(z/r,q/r);
-							switch(s) {
-								case "0": s=""; break;
-								case "1": s="10"; n=""+p; break;
-								case "-1": s="-10"; n=""+p; break;
-								default: s+="·10";""; n=""+p;
-							}
+						s=tickformat(z/r,q/r);
+						switch(s) {
+							case "0": s=""; break;
+							case "1": s="10"; n=""+p; break;
+							case "-1": s="-10"; n=""+p; break;
+							default: s+="·10";""; n=""+p;
+						}
 					} else { 
 						s=tickformat(z,q);
 						if(s=="0") { s=""; }
@@ -682,6 +683,7 @@
 					<tr><td>1/(4*pi*e0)</td></tr>
 					<tr><td>( e0*(3keV) / (e^2*1e23 cm^-3) )^0.5 in nanometer</td></tr>
 					<tr><td>x = 1 m; y = 4 km; x*y/(x^2+y^2)</td></tr>
+					<tr><td>graph x^2</td></tr>
 				</tbody></table>
 			</div>
 			<div id="help2c">
