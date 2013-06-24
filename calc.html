@@ -834,8 +834,8 @@
 			s=constants(s);
 			// user-defined variables
 			for(i=0;i<varout.length;i+=1) { s=s.replace(varout[i][0],"$1("+varout[i][1]+")$2"); }
-			// manage e, E, + and - (the - are replaced by +-)
-			s=s.replace(re_em,'@').replace(re_ep,'#').replace(re_pm,'$1+-').replace("-(","(-1)*(");
+			// manage e, E, + and - (the - are replaced by +(-1)*)
+			s=s.replace(re_em,'@').replace(re_ep,'#').replace(re_pm,'$1+(-1)*');
 			// Manage units
 			s=s.replace(re_unit1,"$1*$2");
 			// Remove spaces; Replace (+ with (
@@ -858,7 +858,7 @@
 					// We create "plot" which groups all elements in the graph for easy scrolling
 					plot=g.Group();
 					// Create a function that represents the curve, and find the best boundaries
-					plot.curveEq = new Function("x","return "+s[0].split("|").join("x"));
+					plot.curveEq = new Function("x","return "+s[0].split("|").join("x")+";");
 					b=findBestBounds(plot);
 					if(!b) { eout.innerHTML = "Error:<br/>cannot graph the function."; }
 					plot.init(b[0],b[1],b[2],b[3],gw,gh); // initialize the plot
@@ -1077,7 +1077,7 @@
 					
 					// Try to evaluate the final expression in parenthesis.
 					if(graph && sss.indexOf("|")>=0) {
-						ss.push(sss);
+						ss.push('('+sss+')');
 					} else {						
 						try{ss.push(""+eval(sss))}
 						catch(e) {return ["Error:","cannot evaluate "+sss];}
