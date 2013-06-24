@@ -834,11 +834,7 @@
 			s=constants(s);
 			// user-defined variables
 			for(i=0;i<varout.length;i+=1) { s=s.replace(varout[i][0],"$1("+varout[i][1]+")$2"); }
-<<<<<<< HEAD
-			// manage e, E, + and - (the - are replaced by +(-1*))
-=======
 			// manage e, E, + and - (the - are replaced by +(-1)*)
->>>>>>> graph
 			s=s.replace(re_em,'@').replace(re_ep,'#').replace(re_pm,'$1+(-1)*');
 			// Manage units
 			s=s.replace(re_unit1,"$1*$2");
