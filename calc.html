@@ -396,7 +396,7 @@
 					if(v=="1") { v=ss[1]; }
 					else { v=v+" &#215; "+ss[1]; }
 				}
-				
+					
 				// Manage storing to a variable
 				if(varname.length>0) {
 					us=" ";
@@ -458,9 +458,11 @@
 					
 				case ')':
 					sss=s.substring(j,i); j=i+1; // get the string before ")"
+					
 					sss=segment(sss); // Evaluate the string as math expression.
 					if(sss[0]=="Error:") return sss;
 					ss.push(sss[0]); kk.push(k); uu.push(sss[1]); // Store result.
+					
 					// now ss contains a list of previous values
 					// uu contains a list of previous units
 					// kk contains a list of previous "parenthesis levels"
