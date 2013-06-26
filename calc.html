@@ -444,18 +444,29 @@
 		this.fullUpdate = function() {
 			this.update();
 			// Update curve with as many points as necessary
-			this.d="M "+(this.m[0]*this.s[0])+" 0 "; this.pathState="M";
-			this.maxdepth=5;
-			var l=(this.M[0]-this.m[0])/this.np;
-			var x,x0,x1,y,y0,y1,t,r;
-			for(x=this.m[0]; x<this.M[0]; x+=l) {
+			this.d="M "+(this.m[0]*this.s[0])+" 0 "; // start svg path
+			this.pathState="M";
+			this.maxdepth=5; // depth for adaptative finding of min/max
+			var l=(this.M[0]-this.m[0])/this.np; // step in x
+			var x,x0,x1,y,y0,y1,t,r,discont,dx,dy,k;
+			for(x=this.m[0]; x<this.M[0]; x+=l) { // loop over x
 				y=this.curveEq(x);
-				this.addMorePoints(x,y);
-				x0=x; x1=x+l; y0=y; y1=this.curveEq(x1);
-				if(y1<y0) { t=x0; x0=x1; x1=t; t=y0; y0=y1; y1=t; }
-				r=this.adaptativeMinMax(x,x+l,x,y0,x+l,y1,0);
-				if(r[1]<y0) { this.addMorePoints(r[0],r[1]); }
-				if(r[3]>y1) { this.addMorePoints(r[2],r[3]); }
+				this.addMorePoints(x,y); // add point to svg path
+				x0=x; x1=x+l; y0=y; y1=this.curveEq(x1); // calculate next point
+				if(y1<y0) { t=x0; x0=x1; x1=t; t=y0; y0=y1; y1=t; } // sort the two points (min then max)
+				r=this.adaptativeMinMax(x,x+l,x0,y0,x1,y1,0); // find min and max of function between them
+				if(r[1]<y0) { this.addMorePoints(r[0],r[1]); } // add min if necessary
+				if(r[1]<y0 || r[3]>y1) { // if min or max encountered, check whether discontinuity.
+					if(Math.abs(r[2]-r[0])>1e-6*Math.max(Math.abs(r[2]),Math.abs(r[0]))) { // if numerical precision is ok
+						dx=(r[2]-r[0])*0.1; dy=Math.abs(r[3]-r[1])*0.3; t=0.5*(r[3]+r[1]);
+						for(k=0; k<10; k+=1) { // search for intermediate points
+							y=this.curveEq(r[0]+k*dx);
+							if(Math.abs(y-t)<dy) { break; } // if intermediate point, then not discontinuous
+						}
+						if(k>8) { this.pathState=""; } // discontinuity
+					}
+				}
+				if(r[3]>y1) { this.addMorePoints(r[2],r[3]); } // add max if necessary
 			}
 			this.quickCurve.setAttribute("points",[0,0]);
 			this.curve.setAttribute("d",this.d);
@@ -472,18 +483,14 @@
 		};
 		
 		this.adaptativeMinMax = function(x0,x1,xm,ym,xM,yM,depth) {
+		// returns approximate min and max points between x0 and x1, in the form [xm,ym,xM,yM]
 			if(depth>=this.maxdepth) {return [xm,ym,xM,yM];}
 			this.yy=this.curveEq((x0+x1)*0.5);
-			if(this.yy>yM) {
-				var r1=this.adaptativeMinMax(x0,(x0+x1)*0.5,xm,ym,(x0+x1)*0.5,this.yy,depth+1);
-				var r2=this.adaptativeMinMax((x0+x1)*0.5,x1,xm,ym,(x0+x1)*0.5,this.yy,depth+1);
-			} else if(this.yy<ym) {
-				var r1=this.adaptativeMinMax(x0,(x0+x1)*0.5,(x0+x1)*0.5,this.yy,xM,yM,depth+1);
-				var r2=this.adaptativeMinMax((x0+x1)*0.5,x1,(x0+x1)*0.5,this.yy,xM,yM,depth+1);
-			} else if(depth<2) {
-				var r1=this.adaptativeMinMax(x0,(x0+x1)*0.5,xm,ym,xM,yM,depth+1);
-				var r2=this.adaptativeMinMax((x0+x1)*0.5,x1,xm,ym,xM,yM,depth+1);
-			} else { return [xm,ym,xM,yM]; }
+			if(this.yy>yM) { xM=(x0+x1)*0.5; yM=this.yy; }
+			else if(this.yy<ym) { xm=(x0+x1)*0.5; ym=this.yy; }
+			else if(depth>1) { return [xm,ym,xM,yM]; }
+			var r1=this.adaptativeMinMax(x0,(x0+x1)*0.5,xm,ym,xM,yM,depth+1);
+			var r2=this.adaptativeMinMax((x0+x1)*0.5,x1,xm,ym,xM,yM,depth+1);
 			if(r2[1]<r1[1]) { r1[0]=r2[0]; r1[1]=r2[1]; }
 			if(r2[3]>r1[3]) { r1[2]=r2[2]; r1[3]=r2[3]; }
 			return r1;
@@ -956,7 +963,6 @@
 					g.ZoomButton(x,y,w,h,"-").z=[1/1.1,1];
 					// Draw the plot
 					plot.fullUpdate();
-					//findBestBounds(f,plot);
 					continue;
 				}
 			
