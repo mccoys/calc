@@ -71,6 +71,13 @@
 			"fill":"none", "stroke":stroke, "stroke-width":thickness, "stroke-dasharray":dash });
 		return this.appendChild(e);
 	};
+	SVGElement.prototype.Path = function(pathdata,stroke,thickness,dash) {
+		var e=document.createElementNS(svgns,"path");
+		if(!dash) { dash="none"; }
+		e.sets({"d":pathdata, "vector-effect":"non-scaling-stroke",
+			"fill":"none", "stroke":stroke, "stroke-width":thickness, "stroke-dasharray":dash });
+		return this.appendChild(e);
+	};
 	SVGElement.prototype.Text = function(str,x,y,fontsize,color,align,rot) {
 		var t=document.createElementNS(svgns,"text");
 		t.sets({"x":x+"","y":y+"","fill":color});
@@ -155,6 +162,7 @@
 			}
 		}
 		xm=xm[1]; xM=xM[0]; // Now we have the global x boundaries
+		//alert(xm+"  "+xM);
 
 		// Adaptatively find best x range
 		plot.x_=new Array(5); plot.y_=new Array(5);
@@ -197,7 +205,7 @@
 		x=new Array(100); var u=new Array(99);
 		x.linspace(xm,xM);
 		// First refinement
-		var ok=false, kmax=100, i0, i1, xlim, xmax;
+		var ok=false, kmax=100, i0, i1, xlim=[xm,xM], xmax, xmM;
 		plot.maxdepth=1;
 		for(k=0; k<kmax; k+=1) {
 			for(i=0; i<99; i+=1) { u[i]=plot.adaptative(x[i],x[i+1],0,1e-6); }
@@ -213,8 +221,8 @@
 			xmax=Math.max(Math.abs(x[99]),Math.abs(x[0]));
 			if(Math.abs(x[99]-x[0])<Math.max(1e-20, 0.01*xmax)) { k=kmax; break; }
 		}
-		xlim=adjustWith0(x[0], x[99], k>=kmax-1);
-		xm=Math.max(xm,xlim[0]); xM=Math.min(xM,xlim[1]);
+		xmM=adjustWith0(x[0], x[99], k>=kmax-1);
+		xm=Math.max(xm,xmM[0]); xM=Math.min(xM,xmM[1]);
 		//alert(xm+"  "+xM);
 		// Second refinement
 		if(k<kmax-1) {
@@ -274,29 +282,37 @@
 				xmax=Math.max(Math.abs(x[99]),Math.abs(x[0]));
 				if(Math.abs(x[99]-x[0])<Math.max(1e-20, 0.01*xmax)) { k=kmax; break; }
 			}
-			xlim=adjustWith0(x[0], x[99], k>=kmax-1);
-			xm=Math.max(xm,xlim[0]); xM=Math.min(xM,xlim[1]);
+			xmM=adjustWith0(x[0], x[99], k>=kmax-1);
+			xm=Math.max(xm,xmM[0]); xM=Math.min(xM,xmM[1]);
 		}
-		//alert([xm,xM,-1,1]);
+		// If bug, then reset to default
+		if(k==1 || !isFinite(xm) || !isFinite(xM) || Math.abs(xM-xm)/Math.max(Math.abs(xm),Math.abs(xM))<1e-6) {
+			xlim.shrinkTowards0(4/(xlim[1]-xlim[0]));
+			xm=xlim[0]; xM=xlim[1];
+		}
+		//alert([xm,xM]);
 
 		// X range is now found.
 		// Find best Y range
-		y=new Array(1000); dx=(xM-xm)/999.;
-		for(k=0;k<999;k+=1) { y[k]=f(xm+dx*k); }
-		y[999]=f(xM);
+		y=[]; dx=(xM-xm)/999.;
+		var l;
+		for(k=0;k<999;k+=1) { l=f(xm+dx*k); if(isFinite(l)) { y.push(l); } }
+		l=f(xM); if(isFinite(l)) { y.push(l); }
 		y.sort(function(a,b) {return a-b;});
-		ym=y[0]; yM=y[999];
+		//alert(y);
+		l=y.length;
+		ym=y[0]; yM=y[l-1];
 		var yh=new Array(11), dk, hmax;
 		for(i=0;i<30;i+=1) {
 			dy=(yM-ym)*0.1;
 			// compute histogram yh in 10 bins
-			yh[0]=0; yh[10]=999; dk=100; hmax=0;
+			yh[0]=0; yh[10]=l-1; dk=100; hmax=0;
 			for(k=1;k<10;k+=1) {
-				if(yh[k-1]>=999) { yh[k]=999; continue; }
-				dk=Math.ceil((1000-yh[k-1])/(11-k));
+				if(yh[k-1]>=l-1) { yh[k]=l-1; continue; }
+				dk=Math.ceil((l-yh[k-1])/(11-k));
 				yh[k]=yh[k-1]; y0=ym+dy*k;
 				while(dk>1) {
-					if(yh[k]+dk>998 || y[yh[k]+dk]>y0) { dk=Math.floor(dk*0.5); }
+					if(yh[k]+dk>l-2 || y[yh[k]+dk]>y0) { dk=Math.floor(dk*0.5); }
 					else { yh[k]+=dk; }
 				}
 			}
@@ -325,6 +341,7 @@
 		// Final adjustment
 		dx=(xM-xm)/10; xm-=dx; xM+=dx;
 		dy=(yM-ym)/10; ym-=dy; yM+=dy;
+		//alert([xm,xM,ym,yM]);
 		return [xm,xM,ym,yM];
 	}
 	SVGGElement.prototype.init = function(x1,x2,y1,y2,w,h) { // Define plot limits, scalings etc
@@ -335,6 +352,8 @@
 		this.s=[w/(x2-x1), h/(y1-y2)]; // scalings
 		this.t=[-x1*this.s[0], -y2*this.s[1]]; // translations
 		this.setAttribute("transform","translate("+this.t[0]+","+this.t[1]+")");
+		this.m=[0,0];
+		this.M=[0,0];
 		// Create axes
 		this.ax=this.Line(0,0,0,0,"#777",1);
 		this.ay=this.Line(0,0,0,0,"#777",1);
@@ -348,43 +367,36 @@
 		for(i=0; i<2*this.nt[0]; i+=1) { this.tickL[0].Text(" ",0,0,12,"#777",'NC').Tspan("",-5/this.s[0]).setAttribute("dy",-5); }
 		for(i=0; i<2*this.nt[1]; i+=1) { this.tickL[1].Text(" ",0,0,12,"#777",'MW').Tspan("",-5/this.s[0]).setAttribute("dy",-5); }
 		// Create curve
-		this.curve=this.Polyline([0,0],"#4bb",2);
+		this.quickCurve=this.Polyline([0,0],"#4bb",2);
+		this.curve=this.Path("","#4bb",2);
 		this.np=2000;
+		this.points=new Array(2*this.np);
 		
 		// Add replotting management after scrolling
 		this.update = function() {
-			this.AR=-this.s[1]/this.s[0]; // aspect ratio
+			this.curve.setAttribute("d","");
 			this.x1=-this.t[0]/this.s[0]; this.x2=this.b[0]/this.s[0]+this.x1;
 			this.y2=-this.t[1]/this.s[1]; this.y1=this.b[1]/this.s[1]+this.y2;
-			var m=[2*this.x1-this.x2, 2*this.y1-this.y2]
-			var M=[2*this.x2-this.x1, 2*this.y2-this.y1];
-			// Prepare new points for the curve
-			var l=(M[0]-m[0])/this.np, p=0,q=0;
-			var points=new Array(2*this.np);
-			var i=0;
-			for(var z=m[0]; z<M[0]; z+=l) {
-				points[i*2]=z*this.s[0];
-				points[i*2+1]=Math.min(Math.max( this.curveEq(z) ,m[1]),M[1])*this.s[1];
-				i+=1;
-			}
+			this.m[0]=2*this.x1-this.x2; this.m[1]=2*this.y1-this.y2;
+			this.M[0]=2*this.x2-this.x1; this.M[1]=2*this.y2-this.y1;
 			// Update axes
-			this.ax.sets({"x1":""+m[0]*this.s[0], "x2":""+M[0]*this.s[0]});
-			this.ay.sets({"y1":""+m[1]*this.s[1], "y2":""+M[1]*this.s[1]});
+			this.ax.sets({"x1":""+this.m[0]*this.s[0], "x2":""+this.M[0]*this.s[0]});
+			this.ay.sets({"y1":""+this.m[1]*this.s[1], "y2":""+this.M[1]*this.s[1]});
 			// Update ticks and labels
-			var r,j,t,s,n,z1,z2,k,kk,al;
+			var z,r,i,j,t,s,n,z1,z2,k,kk,zz,al,p=0,q=0;
 			al=['NC','MW']; zz=[1,1]; // tick label alignment
 			if(this.b[1]<2*this.t[1]) { al[0]='SC'; zz[1]=-1; } // reverse tick alignment if out of box
-			if(this.b[0]<2*this.t[0]) { al[1]='ME'; zz[0]=-1; }
-			for(k=0; k<2; k+=1) {
+			if(this.b[0]<2*this.t[0]) { al[1]='ME'; zz[0]=-1; } //  depending on axes position
+			for(k=0; k<2; k+=1) { // x then y
 				kk=(k+1)%2;
 				z1=[ (this.x2-this.x1)*0.005,-(this.y2-this.y1)*0.01]; // small offsets for ticks
 				z2=[-(this.x2-this.x1)*0.005, (this.y2-this.y1)*0.01];
 				t = this.ticks[k].childNodes; l=this.tickL[k].childNodes; // get all ticks
-				p=(M[k]-m[k])/this.nt[k]; r=Math.pow(10.,ndec(p));
+				p=(this.M[k]-this.m[k])/this.nt[k]; r=Math.pow(10.,ndec(p));
 				q=Math.floor(Math.sqrt(1.5*(p/r-1))); q=(1+q*q)*r; // now q is tick separation
-				p=Math.max(ndec(m[k]),ndec(M[k]))-1; r=Math.pow(10.,p); // p is the power
+				p=Math.max(ndec(this.m[k]),ndec(this.M[k]))-1; r=Math.pow(10.,p); // p is the power
 				i=0;
-				for(var z=m[k]-m[k]%q;z<M[k];z+=q) { // for each tick position
+				for(z=this.m[k]-this.m[k]%q;z<this.M[k];z+=q) { // for each tick position
 					z1[k]=z; z2[k]=z;
 					t[i].sets({"x1":""+z1[0]*this.s[0],"x2":""+z2[0]*this.s[0],"y1":""+z1[1]*this.s[1],"y2":""+z2[1]*this.s[1],
 						"stroke-width":z?1:0});
@@ -411,69 +423,134 @@
 					l[j].childNodes[0].textContent=""; l[j].childNodes[1].textContent="";
 				}
 			}
-			// Update curve
-			this.curve.setAttribute("points",points);
+		};
+		
+		this.quickUpdate = function() {
+			this.update();
+			// Update curve with 2000 points
+			var l=(this.M[0]-this.m[0])/this.np;
+			var i=0,y;
+			for(var x=this.m[0]; x<this.M[0]; x+=l) {
+				y=this.curveEq(x);
+				if(isFinite(y)) {
+					this.points[i*2]=x*this.s[0];
+					this.points[i*2+1]=Math.min(Math.max(y,this.m[1]),this.M[1])*this.s[1];
+					i+=1;
+				}
+			}
+			this.quickCurve.setAttribute("points",this.points.slice(0,2*i));
+		};
+
+		this.fullUpdate = function() {
+			this.update();
+			// Update curve with as many points as necessary
+			this.d="M "+(this.m[0]*this.s[0])+" 0 "; this.pathState="M";
+			this.maxdepth=5;
+			var l=(this.M[0]-this.m[0])/this.np;
+			var x,x0,x1,y,y0,y1,t,r;
+			for(x=this.m[0]; x<this.M[0]; x+=l) {
+				y=this.curveEq(x);
+				this.addMorePoints(x,y);
+				x0=x; x1=x+l; y0=y; y1=this.curveEq(x1);
+				if(y1<y0) { t=x0; x0=x1; x1=t; t=y0; y0=y1; y1=t; }
+				r=this.adaptativeMinMax(x,x+l,x,y0,x+l,y1,0);
+				if(r[1]<y0) { this.addMorePoints(r[0],r[1]); }
+				if(r[3]>y1) { this.addMorePoints(r[2],r[3]); }
+			}
+			this.quickCurve.setAttribute("points",[0,0]);
+			this.curve.setAttribute("d",this.d);
+		};
+		
+		this.addMorePoints = function(x,y) {
+			if(isFinite(y)) {
+				if(this.pathState=="") { this.d+="M "; this.pathState="M"; }
+				else if(this.pathState=="M") { this.d+="L "; this.pathState="L"; }
+				this.d+=(x*this.s[0])+" "+(Math.min(Math.max(y,this.m[1]),this.M[1])*this.s[1])+" ";
+			} else {
+				this.pathState="";
+			}
+		};
+		
+		this.adaptativeMinMax = function(x0,x1,xm,ym,xM,yM,depth) {
+			if(depth>=this.maxdepth) {return [xm,ym,xM,yM];}
+			this.yy=this.curveEq((x0+x1)*0.5);
+			if(this.yy>yM) {
+				var r1=this.adaptativeMinMax(x0,(x0+x1)*0.5,xm,ym,(x0+x1)*0.5,this.yy,depth+1);
+				var r2=this.adaptativeMinMax((x0+x1)*0.5,x1,xm,ym,(x0+x1)*0.5,this.yy,depth+1);
+			} else if(this.yy<ym) {
+				var r1=this.adaptativeMinMax(x0,(x0+x1)*0.5,(x0+x1)*0.5,this.yy,xM,yM,depth+1);
+				var r2=this.adaptativeMinMax((x0+x1)*0.5,x1,(x0+x1)*0.5,this.yy,xM,yM,depth+1);
+			} else if(depth<2) {
+				var r1=this.adaptativeMinMax(x0,(x0+x1)*0.5,xm,ym,xM,yM,depth+1);
+				var r2=this.adaptativeMinMax((x0+x1)*0.5,x1,xm,ym,xM,yM,depth+1);
+			} else { return [xm,ym,xM,yM]; }
+			if(r2[1]<r1[1]) { r1[0]=r2[0]; r1[1]=r2[1]; }
+			if(r2[3]>r1[3]) { r1[2]=r2[2]; r1[3]=r2[3]; }
+			return r1;
 		};
 	}
 	
 	// Make SVG plot movable
-	var moving=undefined;
+	var moving=undefined, movu, movx, mov;
 	function moveBegin(evt) {
 		evt.preventDefault(); // prevent the default svg dragging
 		document.onmouseup=moveEnd;
 		moving = evt.target.parentNode.firstChild; // e is plot
 		moving.c10=evt.clientX; moving.c20=evt.clientY; // initial coordinates
+		moving.quickUpdate();
 		evt.target.addEventListener("mousemove", moveContinue, false);
 	}
 	function moveContinue(evt) {
 		if(!moving) return;
-		var x,u;
-		x = [evt.clientX-moving.c10+moving.t[0], evt.clientY-moving.c20+moving.t[1]];
+		movx = [evt.clientX-moving.c10+moving.t[0], evt.clientY-moving.c20+moving.t[1]];
 		// move the plot
-		moving.setAttribute("transform","translate("+x[0]+","+x[1]+")");
+		moving.setAttribute("transform","translate("+movx[0]+","+movx[1]+")");
 		// make sure that the ticks don't move further than the plot box
-		u = 2*x[0]/moving.b[0]-1; u=u*(Math.min(1,1/Math.abs(u))-1)*moving.b[0]/2;
-		moving.ticks[1].setAttribute("transform","translate("+u+",0)");
-		moving.tickL[1].setAttribute("transform","translate("+u+",0)");
-		u = 2*x[1]/moving.b[1]-1; u=u*(Math.min(1,1/Math.abs(u))-1)*moving.b[1]/2;
-		moving.ticks[0].setAttribute("transform","translate(0,"+u+")");
-		moving.tickL[0].setAttribute("transform","translate(0,"+u+")");
+		movu = 2*movx[0]/moving.b[0]-1; movu=movu*(Math.min(1,1/Math.abs(movu))-1)*moving.b[0]/2;
+		moving.ticks[1].setAttribute("transform","translate("+movu+",0)");
+		moving.tickL[1].setAttribute("transform","translate("+movu+",0)");
+		movu = 2*movx[1]/moving.b[1]-1; movu=movu*(Math.min(1,1/Math.abs(movu))-1)*moving.b[1]/2;
+		moving.ticks[0].setAttribute("transform","translate(0,"+movu+")");
+		moving.tickL[0].setAttribute("transform","translate(0,"+movu+")");
 	}
 	function moveEnd(evt) {
 		document.onmouseup=null;
 		if(!moving) return;
-		var e=moving; moving=undefined;
-		var t=e.getAttribute("transform").match(/-?[0-9.]+[eE\+\-0-9]*/g);
-		e.t[0]=parseFloat(t[0]); e.t[1]=parseFloat(t[1]);
-		e.update();
+		mov=moving; moving=undefined;
+		var t=mov.getAttribute("transform").match(/-?[0-9.]+[eE\+\-0-9]*/g);
+		mov.t[0]=parseFloat(t[0]); mov.t[1]=parseFloat(t[1]);
+		mov.fullUpdate();
+		mov=undefined;
 	}
 	
 	// Make SVG plot zoomable
-	var zooming=undefined, zoomtimer=undefined;
+	var zooming=undefined, zoomtimer=undefined, zplot=undefined, zoom;
 	function zoomBegin(evt) {
 		evt.preventDefault(); // prevent the default svg dragging
 		document.onmouseup=zoomEnd;
 		zooming=evt.target.parentNode;
+		zplot=zooming.plot;
 		zooming.firstChild.setAttribute("fill","#ddd");
 		setTimeout(zoomContinue, 50);
 	}
 	function zoomContinue() {
 		if(!zooming) return; 
-		var plot=zooming.plot;
-		plot.s[0]*=zooming.z[0];
-		plot.s[1]*=zooming.z[1];
-		plot.t[0]=plot.b[0]/2-zooming.z[0]*(plot.b[0]/2-plot.t[0]);
-		plot.t[1]=plot.b[1]/2-zooming.z[1]*(plot.b[1]/2-plot.t[1]);
-		plot.setAttribute("transform","translate("+plot.t[0]+","+plot.t[1]+")");
-		plot.update();
+		zplot.s[0]*=zooming.z[0];
+		zplot.s[1]*=zooming.z[1];
+		zplot.t[0]=zplot.b[0]/2-zooming.z[0]*(zplot.b[0]/2-zplot.t[0]);
+		zplot.t[1]=zplot.b[1]/2-zooming.z[1]*(zplot.b[1]/2-zplot.t[1]);
+		zplot.setAttribute("transform","translate("+zplot.t[0]+","+zplot.t[1]+")");
+		zplot.quickUpdate();
 		setTimeout(zoomContinue, 50);
 	}
 	function zoomEnd(evt) {
 		//if(zoomtimer) {clearInterval(zoomtimer);}
 		document.onmouseup=null;
 		if(!zooming) return;
-		var e=zooming; zooming=undefined;
-		e.firstChild.setAttribute("fill","#eee");
+		zoom=zooming; zooming=undefined;
+		zoom.firstChild.setAttribute("fill","#eee");
+		zplot.fullUpdate();
+		zoom=undefined; zplot=undefined;
 	}
 	
 	// number of decimal places
@@ -878,7 +955,7 @@
 					g.ZoomButton(x+2*w,y,w,h,"+").z=[1.1,1];
 					g.ZoomButton(x,y,w,h,"-").z=[1/1.1,1];
 					// Draw the plot
-					plot.update();
+					plot.fullUpdate();
 					//findBestBounds(f,plot);
 					continue;
 				}
