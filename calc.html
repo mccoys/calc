@@ -296,14 +296,14 @@
 		// Find best Y range
 		y=[]; dx=(xM-xm)/999.;
 		var l;
-		for(k=0;k<999;k+=1) { l=f(xm+dx*k); if(isFinite(l)) { y.push(l); } }
+		for(k=0;k<999;k+=1) { l=f(xm+dx*k); if(isFinite(l) && Math.abs(l)<1e100) { y.push(l); } }
 		l=f(xM); if(isFinite(l)) { y.push(l); }
 		y.sort(function(a,b) {return a-b;});
 		//alert(y);
 		l=y.length;
 		ym=y[0]; yM=y[l-1];
 		var yh=new Array(11), dk, hmax;
-		for(i=0;i<30;i+=1) {
+		for(i=0;i<200;i+=1) {
 			dy=(yM-ym)*0.1;
 			// compute histogram yh in 10 bins
 			yh[0]=0; yh[10]=l-1; dk=100; hmax=0;
@@ -326,6 +326,7 @@
 			i0=yh.indexOf(1); i1=yh.lastIndexOf(1);
 			if(i0==0 && i1>=9) { break; }
 			ym=ym+dy*i0; yM=ym+dy*(i1+1);
+			//alert(ym+"  "+yM);
 		}
 		// Adjust y range
 		if(Math.abs(yM+ym)<yM*0.5) { yM=(yM-ym)*0.5; ym=-yM; }
@@ -1295,6 +1296,9 @@
 		URLeq=URLeq.substring(1);
 		if(URLeq.length>0) { ein.value=URLeq; }
 	}
+	
+	// launch
+	calcstart();
 -->
 </script>
 </body>
