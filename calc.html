@@ -713,7 +713,7 @@
 	re_u1.push(/^[Pp]arsecs?$/); ru.push([1,0,0,0,0,0,0,0]); rf.push(3.085677581491e+16);
 	re_u1.push(/^[Ll]ight-?[Yy]ears?$|^ly$/); ru.push([1,0,0,0,0,0,0,0]); rf.push(9460730472580800);
 	re_u1.push(/^[Ee]rgs?$/); ru.push([2,1,-2,0,0,0,0,0]); rf.push(1e-7);
-	re_u1.push(/^atmospheres?$|^atm$/); ru.push([-1,1,-2,0,0,0,0,0]); rf.push(100);
+	re_u1.push(/^atmospheres?$|^atm$/); ru.push([-1,1,-2,0,0,0,0,0]); rf.push(101325.);
 	var nu1=ru.length;
 	
 	// other regular expressions
@@ -822,7 +822,7 @@
 					<tr><td>electronvolt</td><td>eV</td><td>1.60217653 &#215; 10<sup>-19</sup> m<sup>2</sup> kg s<sup>-2</sup></td></tr>
 					<tr><td>angstrom</td><td>angstrom</td><td>10<sup>-10</sup> m</td></tr>
 					<tr><td>barn</td><td>b</td><td>10<sup>-28</sup> m<sup>2</sup></td></tr>
-					<tr><td>atmosphere</td><td>atm</td><td>100 m<sup>-1</sup> kg s<sup>-2</sup></td></tr>
+					<tr><td>atmosphere</td><td>atm</td><td>101325 m<sup>-1</sup> kg s<sup>-2</sup></td></tr>
 					<tr><td>amu</td><td>u</td><td>1.66053886 &#215; 10<sup>-27</sup> kg</td></tr>
 					<tr><td>inch</td><td></td><td>0.0254 m</td></tr>
 					<tr><td>foot</td><td></td><td>0.3048 m</td></tr>
