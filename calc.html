@@ -9,13 +9,14 @@
 	body { background:#fff; }
 	#cont { height:100%; width:100%; display:table; text-align:center; }
 	#cont > div { width:100%; margin:0 auto; vertical-align:top; }
-	input[type=text] {
+	textarea {
 		padding:3px; margin:0;
 		-webkit-box-shadow: 0 0 4px #bbb; -moz-box-shadow: 0 0 4px #bbb;
 		box-shadow: 0 0 4px #bbb;
 		background: #f8f8f8; color:#888; border:none; outline:none;
 		-webkit-appearance:none; -moz-appearance:none; appearance:none;
 		text-align:center; font: 15px sans-serif;
+		width:600px; height:16px; resize:none;
 	}
 	#outcont, #hcont { width:600px; padding:3px; margin:0 auto; }
 	#out, #help1, #help2 { margin:0}
@@ -666,7 +667,7 @@
 	re_u1.push(/[Gg]auss$/);  re_u2.push(/ /);ru.push([0,1,-2,-1,0,0,0,0]); rf.push(1e-4);
 	re_u1.push(/[Hh]enrys?$/);  re_u2.push(/H$/);ru.push([2,1,-2,-2,0,0,0,0]); rf.push(1);
 	re_u1.push(/[Ll]itres?$/);re_u2.push(/[lL]$/);ru.push([3,0,0,0,0,0,0,0]); rf.push(1e-3);
-	re_u1.push(/[Tt]onnes?$/);  re_u2.push(/t$/); ru.push([0,1,0,0,0,0,0,0]); rf.push(1e3);
+	re_u1.push(/[Tt]onnes?$/);  re_u2.push(/ /); ru.push([0,1,0,0,0,0,0,0]); rf.push(1e3);
 	re_u1.push(/[Ee]lectron[Vv]olts?$/);re_u2.push(/eV$/);ru.push([2,1,-2,0,0,0,0,0]); rf.push(1.60217653e-19);
 	re_u1.push(/bars?$/);       re_u2.push(/bar$/);ru.push([-1,1,-2,0,0,0,0,0]); rf.push(1e5);
 	var nu=ru.length;
@@ -697,13 +698,13 @@
 	
 	// Other units
 	re_u1.push(/^[Hh]ectares?$|^ha$/); ru.push([2,0,0,0,0,0,0,0]); rf.push(1e4);
-	re_u1.push(/^[Aa]res?$|^a$/); ru.push([2,0,0,0,0,0,0,0]); rf.push(100);
+	re_u1.push(/^[Aa]res?$/); ru.push([2,0,0,0,0,0,0,0]); rf.push(100);
 	re_u1.push(/^[Dd]egrees?$|^deg$/); ru.push([0,0,0,0,0,0,0,1]); rf.push(0.017453292519943295);
 	re_u1.push(/^[Mm]inutes?$|^min$/); ru.push([0,0,1,0,0,0,0,0]); rf.push(60);
 	re_u1.push(/^[Hh]ours?$/); ru.push([0,0,1,0,0,0,0,0]); rf.push(3600);
-	re_u1.push(/^[Dd]ays?$|^d/); ru.push([0,0,1,0,0,0,0,0]); rf.push(86400);
-	re_u1.push(/angstroms?$/); ru.push([1,0,0,0,0,0,0,0]); rf.push(1e-10);
-	re_u1.push(/^(?:am)?u$/); ru.push([0,1,0,0,0,0,0,0]); rf.push(1.66053886e-27);
+	re_u1.push(/^[Dd]ays?$/); ru.push([0,0,1,0,0,0,0,0]); rf.push(86400);
+	re_u1.push(/^[Aa]ngstroms?$/); ru.push([1,0,0,0,0,0,0,0]); rf.push(1e-10);
+	re_u1.push(/^amu$/); ru.push([0,1,0,0,0,0,0,0]); rf.push(1.66053886e-27);
 	re_u1.push(/^[Ii]nch(?:es)?$$/); ru.push([1,0,0,0,0,0,0,0]); rf.push(0.0254);
 	re_u1.push(/^[Ff]oot$|^[Ff]eet$/); ru.push([1,0,0,0,0,0,0,0]); rf.push(0.3048);
 	re_u1.push(/^[Yy]ards?$/); ru.push([1,0,0,0,0,0,0,0]); rf.push(0.9144);
@@ -749,7 +750,7 @@
 				</g>
 			</g></svg>
 		</div>
-		<input id="in" type="text" size="86" style="width:600px" onkeypress="go(event);" value="me*c^2 in keV"></input>
+		<textarea id="in" cols="86" rows="1" onkeydown="go(event);" onkeyup="resize();">me*c^2 in keV</textarea>
 		<div id="outcont"><div id="out"> </div></div>
 		<div id="hcont">
 			<div id="help1" onclick="help(this)">Examples</div>
@@ -815,15 +816,16 @@
 					<tr><td>henry</td><td>H</td><td>m<sup>2</sup> kg s<sup>-2</sup> A<sup>-2</sup></td></tr>
 					<tr><td>minute</td><td>min</td><td>60 s</td></tr>
 					<tr><td>hour</td><td></td><td>3600 s</td></tr>
-					<tr><td>day</td><td>d</td><td>345600 s</td></tr>
+					<tr><td>day</td><td></td><td>345600 s</td></tr>
+					<tr><td>are</td><td></td><td>100 m<sup>2</sup></td></tr>
 					<tr><td>hectare</td><td>ha</td><td>10000 m<sup>2</sup></td></tr>
 					<tr><td>litre</td><td>L</td><td>0.001 m<sup>3</sup></td></tr>
-					<tr><td>tonne</td><td>t</td><td>1000 kg</td></tr>
+					<tr><td>tonne</td><td></td><td>1000 kg</td></tr>
 					<tr><td>electronvolt</td><td>eV</td><td>1.60217653 &#215; 10<sup>-19</sup> m<sup>2</sup> kg s<sup>-2</sup></td></tr>
 					<tr><td>angstrom</td><td>angstrom</td><td>10<sup>-10</sup> m</td></tr>
-					<tr><td>barn</td><td>b</td><td>10<sup>-28</sup> m<sup>2</sup></td></tr>
+					<tr><td>barn</td><td></td><td>10<sup>-28</sup> m<sup>2</sup></td></tr>
 					<tr><td>atmosphere</td><td>atm</td><td>101325 m<sup>-1</sup> kg s<sup>-2</sup></td></tr>
-					<tr><td>amu</td><td>u</td><td>1.66053886 &#215; 10<sup>-27</sup> kg</td></tr>
+					<tr><td>amu</td><td></td><td>1.66053886 &#215; 10<sup>-27</sup> kg</td></tr>
 					<tr><td>inch</td><td></td><td>0.0254 m</td></tr>
 					<tr><td>foot</td><td></td><td>0.3048 m</td></tr>
 					<tr><td>yard</td><td></td><td>0.9144 m</td></tr>
@@ -848,8 +850,19 @@
 	// Main callback, when Enter is pressed
 	function go(e) {
 		if(typeof(e)=='undefined' && window.event) { e=window.event; }
-		if(e.keyCode!=13) { return false; }
-		calcstart();
+		if(e.keyCode==13) {
+			if(e.shiftKey) {
+				n=parseInt(ein.rows) + 1;
+				ein.style.height = (16*n)+"px";
+				ein.rows = n;
+			} else { e.preventDefault(); calcstart(); }
+		}
+		return false;
+	}
+	function resize() {
+		var n=ein.value.split("\n").length;
+		ein.style.height = (16*n)+"px";
+		ein.rows = n;
 	}
 	
 	// Replace physical constants in a string
@@ -865,8 +878,9 @@
 		
 		var sin=ein.value, sout ="", varout=[], varname,
 			i,j,k,l,u,v,us,newu,newu0,s,ss,sss,tm,tp,ok,
-			gcont,g,gw,gh,rect,zoom,lx,ly,x,y,w,h,f,b;
-		
+			gcont,g,gw,gh,rect,zoom,lx,ly,x,y,w,h,f,b,expr;
+		sin=sin.split("\n").join(";").replace(/;+/g,";");
+			
 		// wrong characters
 		var err=sin.replace(re_err,'');
 		if(err.length>0) {
@@ -914,6 +928,8 @@
 					eout.innerHTML = "Variable name ambiguous with units: "+varname; return; }
 			}
 			s=s[0]; // s now contains the expression
+			expr = "";
+			if(sin.length>1 && varname.length==0) expr=s;
 	
 			s="("+s+")";
 			// constants
@@ -1036,6 +1052,8 @@
 					// In varout, we store a regexp to recognize the variable, and a replacement value
 					varout.push([new RegExp("(\\W)"+varname+"(\\W)","g"), s[0]+us]);
 					v = varname+" = "+v;
+				} else if(expr.length>0) {
+					v = expr+" = "+v;
 				}
 				
 				s[0]=v; s[1]=u;
@@ -1286,7 +1304,7 @@
 	var exa = document.getElementById("examples").getElementsByTagName("tr");
 	for(var k=0; k<exa.length; k+=1) {
 		exa[k].style.cursor = "pointer";
-		exa[k].onclick = function(){ein.value=this.childNodes[0].innerHTML; calcstart();};
+		exa[k].onclick = function(){ein.value=this.childNodes[0].innerHTML; resize(); calcstart();};
 	}
 	
 	// If the URL contains the formula embedded, then use that
