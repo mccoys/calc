@@ -28,8 +28,10 @@
 	#help1 { margin-left:100px; }
 	#help2 { margin-left:130px; }
 	#help3 { margin-left:130px; }
-	#help1c, #help2c, #help3c {clear:both; width:100%; height:300px;
-		display:none; overflow:auto; font:15px serif; color:#777;}
+	#help1c, #help2c, #help3c {
+		clear:both; width:100%; height:300px;
+		display:none; overflow:auto; font:15px serif; color:#777;
+	}
 	.t { width:100%; border:0; border-collapse:collapse; }
 	.t td:nth-child(1) { width:250px; text-align:right; }
 	.t td:nth-child(2) { width:100px; text-align:center; }
@@ -760,7 +762,7 @@
 				<br/>
 				<table style="width:100%"><tbody id="examples">
 					<tr><td>2*3</td></tr>
-					<tr><td>1/2 m</td></tr>
+					<tr><td>18 m * 2 m</td></tr>
 					<tr><td>4 watt * 8 second</td></tr>
 					<tr><td>4 W * 8 s in J</td></tr>
 					<tr><td>4 hours + 2 day in seconds</td></tr>
@@ -1061,13 +1063,13 @@
 			
 			// Output
 			if(j>0) {eout.innerHTML += "<br/>";}
-			eout.innerHTML += s[0]+"&nbsp;&nbsp;&nbsp;<font style=\"color:#779\">"+s[1]+"</font>";
+			eout.innerHTML += s[0]+"&nbsp;&nbsp;&nbsp;<font style=\"color:#77b\">"+s[1]+"</font>";
 		}
 	}
 	
 	// Parse the string and calculate
 	function calc(s) {
-		var i,j=0,k=0,l,ss=[],uu=[],kk=[],ff=[],sss,u,uuu,f,t,n;
+		var i,j=0,k=0,l,ss=[],uu=[],kk=[],ff=[],rr=[],sss,u,uuu,f,t,n,seg;
 		
 		// Loop each character in the expression
 		for(i=0; i<s.length; i+=1) {
@@ -1101,11 +1103,11 @@
 					break;
 					
 				case ')':
-					sss=s.substring(j,i); j=i+1; // get the string before ")"
+					seg=s.substring(j,i); j=i+1; // get the string before ")"
 					
-					sss=segment(sss); // Evaluate the string as math expression.
+					sss=segment(seg); // Evaluate the string as math expression.
 					if(sss[0]=="Error:") return sss;
-					ss.push(sss[0]); kk.push(k); uu.push(sss[1]); // Store result.
+					ss.push(sss[0]); kk.push(k); uu.push(sss[1]); rr.push(seg); // Store result.
 					
 					// now ss contains a list of previous values
 					// uu contains a list of previous units
@@ -1116,8 +1118,8 @@
 					while(kk[kk.length-1]==k) {
 						//alert("====\n"+ss+"\n"+kk+"\n"+uu+"\n"+sss);
 						// Get the information of the previous stored values.
-						t=ss[ss.length-1]; u=uu[uu.length-1];
-						ss.pop(); kk.pop(); uu.pop(); // remove info.
+						t=ss[ss.length-1]; u=uu[uu.length-1]; seg=rr[rr.length-1];
+						ss.pop(); kk.pop(); uu.pop(); rr.pop(); // remove info.
 						// If units=="!", it means it was an operator (+-/*^) => impossible
 						if(u=="!") { return ["Error:","operator mismatch."]; }
 						
@@ -1127,11 +1129,11 @@
 						while(ss[ss.length-1]=="^" && kk[kk.length-1]==k) {
 							if(!arrayequal(u,[0,0,0,0,0,0,0,0])) // units must be 0 inside a "^".
 								{ return ["Error:","non-dimensionless power expression."];}
-							ss.pop(); kk.pop(); uu.pop(); // remove info.
+							ss.pop(); kk.pop(); uu.pop(); rr.pop(); // remove info. 
 							u=uu[uu.length-1]; t=eval(t); // Move once more backwards: evaluate expression.
 							for(l=0;l<8;l+=1) { u[l]*=t; } // Take units to the power.
 							t="Math.pow("+ss[ss.length-1]+","+t+")"; // Convert power to javascript.
-							ss.pop(); kk.pop(); uu.pop(); // remove info.
+							ss.pop(); kk.pop(); uu.pop(); rr.pop(); // remove info.
 						}
 						
 						// If we reached the end of the parenthesis, stop moving backwards.
@@ -1141,19 +1143,27 @@
 							break; // exit loop backwards.
 						}
 						
+						// Special case of ambiguity such as "1/2m"
+						if(uu.length>2) {
+							var u2 = uu[uu.length-2], s2 = ss[ss.length-2], k3 = kk[kk.length-3], s3 = ss[ss.length-3], r4=rr[rr.length-4];
+							if(k==k3 && !arrayequal(u,[0,0,0,0,0,0,0,0]) && arrayequal(u2,[0,0,0,0,0,0,0,0]) && s3=="/") {
+								return ["Error:","\"("+r4+"/"+s2+")"+seg+"\" ambiguous with \""+r4+"/("+s2+seg+")\""];
+							}
+						}
+						
 						// Now we treat the other operators.
 						switch(ss[kk.length-1]) {
 							case "*": // If multiplication,
 								for(l=0;l<8;l+=1) { uuu[uuu.length-1][l]+=u[l]; } // add power to units.
-								sss="*"+t+sss; ss.pop(); kk.pop(); uu.pop();
+								sss="*"+t+sss; ss.pop(); kk.pop(); uu.pop(); rr.pop();
 								break;
 							case"/": // If division, 
 								for(l=0;l<8;l+=1) { uuu[uuu.length-1][l]-=u[l]; } // substract power to units.
-								sss="/"+t+sss; ss.pop(); kk.pop(); uu.pop();
+								sss="/"+t+sss; ss.pop(); kk.pop(); uu.pop(); rr.pop();
 								break;
 							case "+": // If addition,
 								for(l=0;l<8;l+=1) { uuu[uuu.length-1][l]+=u[l]; }
-								sss="+"+t+sss; ss.pop(); kk.pop(); uu.pop();
+								sss="+"+t+sss; ss.pop(); kk.pop(); uu.pop(); rr.pop();
 								uuu.push([0,0,0,0,0,0,0,0]); // begin new units.
 								break;
 						}
@@ -1185,17 +1195,17 @@
 						try{ss.push(""+eval(sss))}
 						catch(e) {return ["Error:","cannot evaluate "+sss];}
 					}
-					kk.push(k); uu.push(uuu[0]); // store the result.
+					kk.push(k); uu.push(uuu[0]); rr.push("?"); // store the result.
 					break;
 					
 				case '+': case'*': case'/': case '^':
-					sss=s.substring(j,i); j=i+1; // get the string before operator.
-					if(sss.length>0) {
-						sss=segment(sss); // calculate the expression before operator.
+					seg=s.substring(j,i); j=i+1; // get the string before operator.
+					if(seg.length>0) {
+						sss=segment(seg); // calculate the expression before operator.
 						if(sss[0]=="Error:") return sss;
-						ss.push(sss[0]); kk.push(k); uu.push(sss[1]); // store result.
+						ss.push(sss[0]); kk.push(k); uu.push(sss[1]); rr.push(seg); // store result.
 					}
-					ss.push(s[i]); kk.push(k); uu.push("!"); // store operator.
+					ss.push(s[i]); kk.push(k); uu.push("!"); rr.push(s[i]); // store operator.
 					break;
 			}
 		}
