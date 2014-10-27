@@ -15,8 +15,8 @@
 		box-shadow: 0 0 4px #bbb;
 		background: #f8f8f8; color:#888; border:none; outline:none;
 		-webkit-appearance:none; -moz-appearance:none; appearance:none;
-		text-align:center; font: 15px sans-serif;
-		width:600px; height:16px; resize:none;
+		text-align:center; font: 15px sans-serif; line-height:15px;
+		width:600px; resize:none;
 	}
 	#outcont, #hcont { width:600px; padding:3px; margin:0 auto; }
 	#out, #help1, #help2 { margin:0}
@@ -1323,6 +1323,8 @@
 		URLeq=URLeq.substring(1);
 		if(URLeq.length>0) { ein.value=URLeq; }
 	}
+	
+	resize();
 -->
 </script>
 </body>
