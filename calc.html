@@ -824,7 +824,7 @@
 					<tr><td>litre</td><td>L</td><td>0.001 m<sup>3</sup></td></tr>
 					<tr><td>tonne</td><td></td><td>1000 kg</td></tr>
 					<tr><td>electronvolt</td><td>eV</td><td>1.60217653 &#215; 10<sup>-19</sup> m<sup>2</sup> kg s<sup>-2</sup></td></tr>
-					<tr><td>angstrom</td><td>angstrom</td><td>10<sup>-10</sup> m</td></tr>
+					<tr><td>angstrom</td><td></td><td>10<sup>-10</sup> m</td></tr>
 					<tr><td>barn</td><td></td><td>10<sup>-28</sup> m<sup>2</sup></td></tr>
 					<tr><td>atmosphere</td><td>atm</td><td>101325 m<sup>-1</sup> kg s<sup>-2</sup></td></tr>
 					<tr><td>amu</td><td></td><td>1.66053886 &#215; 10<sup>-27</sup> kg</td></tr>
@@ -1011,7 +1011,7 @@
 				l = sss.length-1;
 				if(l>8) {
 					sss = (sss.replace(/[0-9]/g,"0").substring(0,l))+"1";
-					tm=(parseFloat(ss[0])-parseFloat(sss))+"",
+					tm=(parseFloat(ss[0])-parseFloat(sss))+"";
 					tp=(parseFloat(ss[0])+parseFloat(sss))+"";
 					if     (tm.length<l-4) { ss[0]=tm; }
 					else if(tp.length<l-4) { ss[0]=tp; }
