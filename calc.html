@@ -636,7 +636,7 @@
 	co.push('1.602176565e-19 C'); re_co.push(/([^\w\.])(?:q_?)?e(?!\w)/g); // q_e
 	co.push('5.2917721092e-11 m'); re_co.push(/(\W)a_?0(?!\w)/g); // a_0
 	co.push('2.8179403267e-15 m'); re_co.push(/(\W)r_?e(?!\w)/g); // r_e
-	co.push('9.10938291e-31 kg'); re_co.push(/(\W)m_?e(?!\w)/g); // m_e
+	co.push('9.10938215e-31 kg'); re_co.push(/(\W)m_?e(?!\w)/g); // m_e
 	co.push('1.672621777e-27 kg'); re_co.push(/(\W)m_?p(?!\w)/g); // m_p
 	co.push('6.02214129e23 mol^(-1)'); re_co.push(/(\W)N_?A(?!\w)/g); // N_A
 	co.push('1.3806488e-23 J*K^(-1)'); re_co.push(/(\W)k_?B(?!\w)/g); // k_B
@@ -670,7 +670,7 @@
 	re_u1.push(/[Hh]enrys?$/);  re_u2.push(/H$/);ru.push([2,1,-2,-2,0,0,0,0]); rf.push(1);
 	re_u1.push(/[Ll]itres?$/);re_u2.push(/[lL]$/);ru.push([3,0,0,0,0,0,0,0]); rf.push(1e-3);
 	re_u1.push(/[Tt]onnes?$/);  re_u2.push(/ /); ru.push([0,1,0,0,0,0,0,0]); rf.push(1e3);
-	re_u1.push(/[Ee]lectron[Vv]olts?$/);re_u2.push(/eV$/);ru.push([2,1,-2,0,0,0,0,0]); rf.push(1.60217653e-19);
+	re_u1.push(/[Ee]lectron[Vv]olts?$/);re_u2.push(/eV$/);ru.push([2,1,-2,0,0,0,0,0]); rf.push(1.602176565e-19);
 	re_u1.push(/bars?$/);       re_u2.push(/bar$/);ru.push([-1,1,-2,0,0,0,0,0]); rf.push(1e5);
 	var nu=ru.length;
 	
