@@ -720,7 +720,7 @@
 	var nu1=ru.length;
 	
 	// other regular expressions
-	var re_err=/[ a-zA-Z0-9=;+\-^*_\/().]/g, re_in=/ in /, re_eq=/(.+)=/,
+	var re_err=/[ a-zA-Z0-9=;+\-^*_\/().,]/g, re_in=/ in /, re_eq=/(.+)=/,
 		re_ep =/[Ee]\+?(?=[0-9])/g, re_em=/[Ee]-(?=[0-9])/g,
 		re_ep1=/#/g, re_em1=/@/g,
 		re_pm=/([^\^])-/g, re_s=/\s/g, re_ss=/\(\+/g, re_par=/^\s*\((.+)\)\s*$/g,
@@ -1080,20 +1080,29 @@
 					ff.push([0,""]); // temporarily empty (may contain a function)
 					if(sss.length>0) { // if "(" preceded by string, must be a function
 						switch(sss) { // Convert function to javascript.
-							case "cos" : case "sin" : case "tan" :
-								ff[ff.length-1]=[1,"Math."+sss+"("];
+							case "cos": case "sin": case "tan": // radian argument only
+								ff[ff.length-1]=[1,"Math."+sss+"(",sss];
 								break;
-							case "acos": case "asin": case "atan":
-								ff[ff.length-1]=[2,"Math."+sss+"("];
+							case "cosh": case "sinh": case "tanh":
+								ff[ff.length-1]=[2,"Math."+sss+"(",sss];
 								break;
-							case "ceil": case "exp": case "floor":
-								ff[ff.length-1]=[3,"Math."+sss+"("];
+							case "acos": case "asin": case "atan": case "acosh": case "asinh": case "atanh":
+								ff[ff.length-1]=[2,"Math."+sss+"(",sss];
+								break;
+							case "exp": case "log10":
+								ff[ff.length-1]=[2,"Math."+sss+"(",sss];
 								break;
 							case "ln":
-								ff[ff.length-1]=[4,"Math.log("];
+								ff[ff.length-1]=[2,"Math.log(",sss];
 								break;
-							case "abs": case "sqrt":
-								ff[ff.length-1]=[5,"Math."+sss+"("];
+							case "ceil": case "floor": case "round": case "abs": case "sign": // unit-conserving functions only
+								ff[ff.length-1]=[3,"Math."+sss+"(",sss];
+								break;
+							case "max": case "min": // functions with several arguments
+								ff[ff.length-1]=[4,"Math."+sss+"(",sss];
+								break;
+							case "sqrt":
+								ff[ff.length-1]=[5,"Math."+sss+"(",sss];
 								break;
 							default:
 								return ["Error:","unknown function "+sss+"."];
@@ -1166,9 +1175,13 @@
 								sss="+"+t+sss; ss.pop(); kk.pop(); uu.pop(); rr.pop();
 								uuu.push([0,0,0,0,0,0,0,0]); // begin new units.
 								break;
+							case ",":
+								if(ff[ff.length-1][0]!=4) return ["Error:","Unaccepted ','"]; // only in functions with multiple arguments
+								for(l=0;l<8;l+=1) { uuu[uuu.length-1][l]+=u[l]; }
+								sss=","+t+sss; ss.pop(); kk.pop(); uu.pop(); rr.pop();
+								uuu.push([0,0,0,0,0,0,0,0]); // begin new units.
+								break;
 						}
-						//alert(ss+"\n"+kk+"\n"+uu+"\n"+sss+"\n======");
-
 					}
 					// Now we finished the loop to combine the parenthesis,
 					k-=1; // and we go up one level.
@@ -1184,9 +1197,13 @@
 						sss=f[1]+sss+")"; // Add function to expression.
 						// if cos, sin or tan, allow radians
 						if(f[0]==1 && uuu[0][7]==1) { uuu[0][7]=0; }
-						// Else, do not allow units in a function.
-						if(!arrayequal(uuu[0],[0,0,0,0,0,0,0,0])) { return ["Error:","A function should have dimensionless argument."]; }
-					} 
+						// Do not allow units in some functions.
+						if(f[0]==2 && !arrayequal(uuu[0],[0,0,0,0,0,0,0,0])) {
+							return ["Error:","Function "+ff[2]+" should have dimensionless argument."];
+						}
+						// Change units for sqrt
+						if(f[2]=="sqrt") for(l=0;l<8;l+=1) uuu[0][l]*=0.5;
+					}
 					
 					// Try to evaluate the final expression in parenthesis.
 					if(graph && sss.indexOf("|")>=0) {
@@ -1197,8 +1214,8 @@
 					}
 					kk.push(k); uu.push(uuu[0]); rr.push("?"); // store the result.
 					break;
-					
-				case '+': case'*': case'/': case '^':
+
+				case '+': case'*': case'/': case '^': case ',':
 					seg=s.substring(j,i); j=i+1; // get the string before operator.
 					if(seg.length>0) {
 						sss=segment(seg); // calculate the expression before operator.
