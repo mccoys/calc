@@ -1229,6 +1229,9 @@
 		ss=ss[0]; uu=uu[0];
 		// Now, ss contain the value, and uu the units
 		
+		// Error if parentheses not finished
+		if(k>0) return ["Error:","missing parentheses"];
+		
 		return [ss,uu];
 	}
 	
