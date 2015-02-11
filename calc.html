@@ -19,23 +19,29 @@
 		width:600px; resize:none;
 	}
 	#outcont, #hcont { width:600px; padding:3px; margin:0 auto; }
-	#out, #help1, #help2 { margin:0}
+	#out, #help1, #help2, #help3, #help4 { margin:0}
 	#outcont { min-height:100px; background-color:none;}
 	#out { padding:20px 0 20px 0; font:19px serif; color:#777;}
 	#hcont { min-height:15px; background-color:#eee; box-shadow: 0 0 4px #bbb;
 		-webkit-box-shadow: 0 0 4px #bbb; -moz-box-shadow: 0 0 4px #bbb; }
-	#help1, #help2, #help3 { float:left; font:15px serif; color:#777; cursor:pointer }
-	#help1 { margin-left:100px; }
-	#help2 { margin-left:130px; }
-	#help3 { margin-left:130px; }
-	#help1c, #help2c, #help3c {
+	#help1, #help2, #help3, #help4 { float:left; font:15px serif; color:#777; cursor:pointer }
+	#help1 { margin-left:70px; }
+	#help2 { margin-left:80px; }
+	#help3 { margin-left:80px; }
+	#help4 { margin-left:80px; }
+	#sep {clear:both; width:100%; height:1px; line-height:1px;
+		border-bottom:1px solid #aaa; padding-top:2px; display:none }
+	#help1c, #help2c, #help3c, #help4c {
 		clear:both; width:100%; height:300px;
 		display:none; overflow:auto; font:15px serif; color:#777;
 	}
-	.t { width:100%; border:0; border-collapse:collapse; }
-	.t td:nth-child(1) { width:250px; text-align:right; }
-	.t td:nth-child(2) { width:100px; text-align:center; }
-	.t td:nth-child(3) { width:250px; text-align:left; }
+	.t2 { width:100%; border:0; border-collapse:collapse; }
+	.t2 td:nth-child(1) { width:250px; padding-right:20px; text-align:right; }
+	.t2 td:nth-child(2) { width:250px; padding-left:20px;text-align:left; }
+	.t3 { width:100%; border:0; border-collapse:collapse; }
+	.t3 td:nth-child(1) { width:250px; text-align:right; }
+	.t3 td:nth-child(2) { width:100px; text-align:center; }
+	.t3 td:nth-child(3) { width:250px; text-align:left; }
 	.graphcont{ width:600px; height:300px; padding:0;
 		margin:0 auto; border:1px solid #dddddd; position:relative}
 	
@@ -758,6 +764,8 @@
 			<div id="help1" onclick="help(this)">Examples</div>
 			<div id="help2" onclick="help(this)">Constants</div>
 			<div id="help3" onclick="help(this)">Units</div>
+			<div id="help4" onclick="help(this)">Functions</div>
+			<div id="sep"></div>
 			<div id="help1c">
 				<br/>
 				<table style="width:100%"><tbody id="examples">
@@ -774,7 +782,7 @@
 				</tbody></table>
 			</div>
 			<div id="help2c">
-				<table class="t"><tbody>
+				<table class="t3"><tbody>
 					<tr><td>speed of light</td><td>c</td><td>299792458. m s<sup>-1</sup></td></tr>
 					<tr><td>gravitational constant</td><td>G</td><td>6.67384 &#215; 10<sup>-11</sup> m<sup>3</sup> kg<sup>-1</sup>s<sup>-2</sup></td></tr>
 					<tr><td>Planck constant</td><td>h</td><td>6.62606957 &#215; 10<sup>-34</sup> J s</td></tr>
@@ -792,7 +800,7 @@
 				</tbody></table>
 			</div>
 			<div id="help3c">
-				<table class="t"><tbody>
+				<table class="t3"><tbody>
 					<tr><td>meter</td><td>m</td><td>m</td></tr>
 					<tr><td>gram</td><td>g</td><td>0.001 kg</td></tr>
 					<tr><td>second</td><td>s</td><td>s</td></tr>
@@ -836,6 +844,38 @@
 					<tr><td>parsec</td><td></td><td>3.0856775815 &#215; 10<sup>16</sup> m</td></tr>
 					<tr><td>light-year</td><td>ly</td><td>9.4607304726 &#215; 10<sup>15</sup> m</td></tr>
 					<tr><td>erg</td><td></td><td>10<sup>-7</sup> m<sup>2</sup> kg s<sup>-2</sup></td></tr>
+				</tbody></table>
+			</div>
+			<div id="help4c">
+				<table class="t2"><tbody>
+					<tr><td>sqrt</td><td>Square root</td></tr>
+					<tr><td><br/></td><td></td></tr>
+					<tr><td>exp</td><td>Exponential</td></tr>
+					<tr><td>ln</td><td>Natural logarithm</td></tr>
+					<tr><td>log10</td><td>Base-10 logarithm</td></tr>
+					<tr><td><br/></td><td></td></tr>
+					<tr><td>cos</td><td rowspan=6>Trigonometric functions</td></tr>
+					<tr><td>sin</td></tr>
+					<tr><td>tan</td></tr>
+					<tr><td>acos</td></tr>
+					<tr><td>asin</td></tr>
+					<tr><td>atan</td></tr>
+					<tr><td><br/></td><td></td></tr>
+					<tr><td>cosh</td><td rowspan=6>Hyperbolic functions</td></tr>
+					<tr><td>sinh</td></tr>
+					<tr><td>tanh</td></tr>
+					<tr><td>acosh</td></tr>
+					<tr><td>asinh</td></tr>
+					<tr><td>atanh</td></tr>
+					<tr><td><br/></td><td></td></tr>
+					<tr><td>abs</td><td>Absolute value</td></tr>
+					<tr><td>sign</td><td>-1/0/+1 depending on the sign</td></tr>
+					<tr><td>round</td><td>Nearest integer</td></tr>
+					<tr><td>floor</td><td>Nearest smaller integer</td></tr>
+					<tr><td>ceil</td><td>Nearest greater integer</td></tr>
+					<tr><td><br/></td><td></td></tr>
+					<tr><td>min</td><td rowspan=2>Minimum or maximum of a series of values separated by a comma (,)</td></tr>
+					<tr><td>max</td></tr>
 				</tbody></table>
 			</div>
 		</div>
@@ -1318,15 +1358,17 @@
 	function help(e) {
 		ee=document.getElementById(e.id+"c");
 		if(ee.style.display!="block") {
-			for(var i=1; i<4; i+=1) {
+			for(var i=1; i<5; i+=1) {
 				document.getElementById("help"+i).style.color="#777";
 				document.getElementById("help"+i+"c").style.display="none";
 			}
 			e.style.color="#000";
 			ee.style.display="block";
+			document.getElementById("sep").style.display="block";
 		} else {
 			e.style.color="#777";
 			ee.style.display="none";
+			document.getElementById("sep").style.display="none";
 		}
 	}
 	
