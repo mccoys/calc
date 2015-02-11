@@ -1040,7 +1040,7 @@
 						eout.innerHTML = "Error:<br/>requested units don't match.";
 						return;
 					}
-					u=newu0.replace(/\^([0-9.\-]+)/g,"<sup>$1</sup>");
+					u=newu0.replace(/\^([0-9.\-]+)/g,"<sup>$1</sup>").replace(/\*/g,"&sdot;");
 					v/=us[0]; // divide the original result by the new units.
 				}
 				// Resolve some problems of precision
