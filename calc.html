@@ -1097,8 +1097,12 @@
 							if(s[1][l]!=1) { us+="^"+s[1][l]; }
 						}
 					}
+					// We check whether the variable already exists. If yes, replace it
+					for(l=0;l<varout.length;l+=1)
+						if(varname==varout[l][2])
+							varout.splice(l,1);
 					// In varout, we store a regexp to recognize the variable, and a replacement value
-					varout.push([new RegExp("(\\W)"+varname+"(\\W)","g"), s[0]+us]);
+					varout.push([new RegExp("(\\W)"+varname+"(\\W)","g"), s[0]+us, varname]);
 					v = varname+" = "+v;
 				} else if(expr.length>0) {
 					v = expr+" = "+v;
