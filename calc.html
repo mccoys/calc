@@ -905,25 +905,42 @@
 	// Main callback, when something is pressed
 	function go(e) {
 		if(typeof(e)=='undefined' && window.event) { e=window.event; }
+		var input = document.activeElement, i;
+		i = input.selectionStart;
 		if(e.keyCode==13) { // enter pressed
 			if(e.shiftKey) {
-				extendInput("");
+				extendInput(input.value.substr(i), input);
+				input.value = input.value.substr(0,i);
 				resize();
-				ein.lastChild.focus();
 			} else { e.preventDefault(); calcstart(); }
 		} else if(e.keyCode==8) { // backspace pressed
-			var input = document.activeElement, i;
 			if( input.tagName=="INPUT" ) {
-				// find cursor position
-				i = input.selectionStart;// mozilla, safari, chrome. WILL NOT WORK IN IE
 				if(i==0) {
-					var text = input.value;
-					ein.removeChild(input);
-					ein.lastChild.value += text;
-					ein.lastChild.focus();
+					removeInput(input);
 					e.preventDefault();
 				}
 			}
+		} else if(e.keyCode==46) { // delete pressed
+			if( input.tagName=="INPUT" ) {
+				if(i==input.value.length && input.nextElementSibling) {
+					removeInput(input.nextElementSibling);
+					e.preventDefault();
+				}
+			}
+		} else if(e.keyCode==38) { // arrow up
+			var prev = input.previousElementSibling;
+			if(!prev) return;
+			var x = Math.round(i-input.value.length/2.+prev.value.length/2.);
+			prev.focus();
+			e.preventDefault();
+			prev.setSelectionRange(x,x);
+		} else if(e.keyCode==40) { // arrow down
+			var next = input.nextElementSibling;
+			if(!next) return;
+			var x = Math.round(i-input.value.length/2.+next.value.length/2.);
+			next.focus();
+			e.preventDefault();
+			next.setSelectionRange(x,x);
 		}
 		return false;
 	}
@@ -933,7 +950,7 @@
 			extendInput("");
 			n = 1;
 		}
-		ein.style.height = (16*n)+"px";
+		ein.style.height = (3+16*n)+"px";
 		ein.rows = n;
 	}
 	
@@ -952,13 +969,44 @@
 		for(var i=0; i<t.length; i+=1) extendInput(t[i]);
 	}
 	// New line in input div
-	function extendInput(newLine) {
-		var n = ein.getElementsByTagName("input").length;
-		var e = document.createElement("input");
-		e.style.backgroundColor = lineColors[n%(lineColors.length)];
-		e.setAttribute("id","in"+n);
+	function extendInput(newLine, currentE) {
+		var els = ein.getElementsByTagName("input");
+		var n = els.length, currentId=-1;
+		if (typeof(currentE)==='undefined') {
+			nextE = null;
+			currentE = els[els.length-1];
+		} else {
+			nextE = currentE.nextSibling;
+		}
+		if(currentE) currentId = parseInt(currentE.getAttribute("id").substr(2));
+		var e = document.createElement("input"), i;
 		e.value = newLine;
-		ein.appendChild(e);
+		ein.insertBefore(e, nextE);
+		e.focus();
+		n+=1;
+		for(i=currentId+1; i<n; i+=1) {
+			e.style.backgroundColor = lineColors[i%(lineColors.length)];
+			e.setAttribute("id","in"+i);
+			e = e.nextSibling;
+		}
+	}
+	// Remove line in input div
+	function removeInput(currentE) {
+		var prevE = currentE.previousElementSibling, pos;
+		if(!prevE) return;
+		prevId = parseInt(currentE.getAttribute("id").substr(2));
+		pos = prevE.value.length;
+		prevE.value += currentE.value;
+		currentE.parentNode.removeChild(currentE);
+		prevE.setSelectionRange(pos, pos);
+		prevE.focus();
+		var e = prevE.nextElementSibling, i = prevId;
+		while(e) {
+			e.style.backgroundColor = lineColors[i%(lineColors.length)];
+			e.setAttribute("id","in"+i);
+			e = e.nextElementSibling;
+			i += 1;
+		}
 	}
 	
 	// Replace physical constants in a string
