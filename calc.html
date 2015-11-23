@@ -9,15 +9,22 @@
 	body { background:#fff; }
 	#cont { height:100%; width:100%; display:table; text-align:center; }
 	#cont > div { width:100%; margin:0 auto; vertical-align:top; }
-	textarea {
-		padding:3px; margin:0;
-		-webkit-box-shadow: 0 0 4px #bbb; -moz-box-shadow: 0 0 4px #bbb;
-		box-shadow: 0 0 4px #bbb;
-		background: #f8f8f8; color:#888; border:none; outline:none;
+	#incont { }
+	#incont2 { position:relative; width:606px; margin:0 auto; background-color:#f8f8f8; }
+	#in {
+		resize:none; outline:none; padding:3px;
 		-webkit-appearance:none; -moz-appearance:none; appearance:none;
-		text-align:center; font: 15px sans-serif; line-height:15px;
-		width:600px; resize:none;
+		text-align:center; font: 15px sans-serif; color:#888;
+		box-shadow:0 0 4px #bbb; -webkit-box-shadow:0 0 4px #bbb; -moz-box-shadow:0 0 4px #bbb;
+		background: transparent; top:0;left:0; z-index:1000;
 	}
+	#in, .inbg {
+		position:absolute; margin:0;
+		width:600px; line-height:16px; border:none;
+	}
+	.inbg {
+		left:0; background-color:#f8f8f8; height:16px; z-index:0;
+		padding:0; margin:3px;}
 	#outcont, #hcont { width:600px; padding:3px; margin:0 auto; }
 	#out, #help1, #help2, #help3, #help4 { margin:0}
 	#outcont { min-height:100px; background-color:none;}
@@ -764,7 +771,11 @@
 				</g>
 			</g></svg>
 		</div>
-		<textarea id="in" cols="86" rows="1" onkeydown="go(event);" onkeyup="resize();">me*c^2 in keV</textarea>
+		<div id="incont clearfix">
+			<div id="incont2">
+				<textarea id="in" cols="86" rows="1" onkeydown="go(event);" onkeyup="resize();">me*c^2 in keV</textarea>
+			</div>
+		</div>
 		<div id="outcont"><div id="out"> </div></div>
 		<div id="hcont">
 			<div id="help1" onclick="help(this)">Examples</div>
@@ -894,23 +905,39 @@
 	// HTML elements
 	var ein  = document.getElementById("in" );
 	var eout = document.getElementById("out");
+	var eibg = document.getElementById("incont2");
 
+	// Color cycle for fonts
+	var textColors =["#777", "#BF881B", "#9C1B20", "#1B369C"];
+	var lineColors =["#f8f8f8", "#FDF8D3", "#FDD3D8", "#D3DFFD"];
+	
 	// Main callback, when Enter is pressed
 	function go(e) {
 		if(typeof(e)=='undefined' && window.event) { e=window.event; }
 		if(e.keyCode==13) {
 			if(e.shiftKey) {
 				n=parseInt(ein.rows) + 1;
-				ein.style.height = (16*n)+"px";
+				ein.style.height = (6+16*n)+"px";
 				ein.rows = n;
 			} else { e.preventDefault(); calcstart(); }
 		}
 		return false;
 	}
 	function resize() {
-		var n=ein.value.split("\n").length;
-		ein.style.height = (16*n)+"px";
-		ein.rows = n;
+		var nl=ein.value.split("\n").length;
+		var ebg=eibg.getElementsByTagName("DIV")
+		var ne=ebg.length, i;
+		for(i=0; i<ne-nl; i+=1) eibg.removeChild(ebg[ne-i-1]);
+		for(i=0; i<nl-ne; i+=1) {
+			e = document.createElement("div");
+			e.className = "inbg";
+			e.style.top = (16*(ne+i))+"px";
+			e.style.backgroundColor = lineColors[(ne+i)%lineColors.length];
+			eibg.appendChild(e);
+		}
+		eibg.style.height = (6+16*nl)+"px";
+		ein.style.height = (16*nl)+"px";
+		ein.rows = nl;
 	}
 	
 	// Replace physical constants in a string
@@ -927,8 +954,21 @@
 		var sin=ein.value, sout ="", varout=[], varname,
 			i,j,k,l,u,v,us,newu,newu0,s,ss,sss,tm,tp,ok,
 			gcont,g,gw,gh,rect,zoom,lx,ly,x,y,w,h,f,b,expr;
-		sin=sin.split("\n").join(";").replace(/;+/g,";");
-			
+		
+		// Split output by new lines or ";"
+		sin=sin.split("\n");
+		var colors=[], s=[], t, k=0;
+		for(i=0; i<sin.length; i+=1) {
+			t = sin[i];
+			t = t.replace(/;+/g,";").split(";");
+			for(j=0; j<t.length; j+=1) {
+				s.push(t[j]);
+				colors.push(textColors[k%textColors.length]);
+			}
+			k+=1;
+		}
+		sin = s.join(";");
+		
 		// wrong characters
 		var err=sin.replace(re_err,'');
 		if(err.length>0) {
@@ -1113,7 +1153,7 @@
 			
 			// Output
 			if(j>0) {eout.innerHTML += "<br/>";}
-			eout.innerHTML += s[0]+"&nbsp;&nbsp;&nbsp;<font style=\"color:#77b\">"+s[1]+"</font>";
+			eout.innerHTML += "<font style=\"color:"+colors[j]+"\">"+s[0]+"</font>&nbsp;&nbsp;&nbsp;<font style=\"color:#77b\">"+s[1]+"</font>";
 		}
 	}
 	
