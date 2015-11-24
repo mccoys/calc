@@ -24,7 +24,12 @@
 	}
 	.inbg {
 		left:0; background-color:#f8f8f8; height:16px; z-index:0;
-		padding:0; margin:3px;}
+		padding:0; margin:3px;
+	}
+	#hintbox {
+		position:absolute; left:612px; visibility:hidden;
+		font:13px sans-serif; color:#888; white-space: nowrap;
+	}
 	#outcont, #hcont { width:600px; padding:3px; margin:0 auto; }
 	#out, #help1, #help2, #help3, #help4 { margin:0}
 	#outcont { min-height:100px; background-color:none;}
@@ -773,7 +778,8 @@
 		</div>
 		<div id="incont clearfix">
 			<div id="incont2">
-				<textarea id="in" cols="86" rows="1" onkeydown="go(event);" onkeyup="resize();">me*c^2 in keV</textarea>
+				<textarea wrap="off" id="in" cols="86" rows="1" onkeydown="go(event);" onkeyup="resize();">me*c^2 in keV</textarea>
+				<div id="hintbox">&#x21E7; + &#8629;</div>
 			</div>
 		</div>
 		<div id="outcont"><div id="out"> </div></div>
@@ -906,38 +912,65 @@
 	var ein  = document.getElementById("in" );
 	var eout = document.getElementById("out");
 	var eibg = document.getElementById("incont2");
-
+	var hintbox = document.getElementById("hintbox");
+	
 	// Color cycle for fonts
 	var textColors =["#777", "#BF881B", "#9C1B20", "#1B369C"];
 	var lineColors =["#f8f8f8", "#FDF8D3", "#FDD3D8", "#D3DFFD"];
 	
 	// Main callback, when Enter is pressed
+	var needResize = true, needHint = false;
 	function go(e) {
+		needResize = false;
+		needHint = false;
 		if(typeof(e)=='undefined' && window.event) { e=window.event; }
-		if(e.keyCode==13) {
-			if(e.shiftKey) {
-				n=parseInt(ein.rows) + 1;
-				ein.style.height = (6+16*n)+"px";
-				ein.rows = n;
-			} else { e.preventDefault(); calcstart(); }
+		switch(e.keyCode) {
+			case 13: // enter
+				if(e.shiftKey) {
+					n=parseInt(ein.rows) + 1;
+					ein.style.height = (6+16*n)+"px";
+					ein.rows = n;
+					needResize = true;
+				} else {
+					needHint = true;
+					e.preventDefault();
+					calcstart();
+				}
+				break;
+			case 8: case 46:
+				needResize = true;
+				break;
 		}
 		return false;
 	}
 	function resize() {
-		var nl=ein.value.split("\n").length;
-		var ebg=eibg.getElementsByTagName("DIV")
-		var ne=ebg.length, i;
-		for(i=0; i<ne-nl; i+=1) eibg.removeChild(ebg[ne-i-1]);
-		for(i=0; i<nl-ne; i+=1) {
-			e = document.createElement("div");
-			e.className = "inbg";
-			e.style.top = (16*(ne+i))+"px";
-			e.style.backgroundColor = lineColors[(ne+i)%lineColors.length];
-			eibg.appendChild(e);
+		if( needResize ) {
+			var nl=ein.value.split("\n").length;
+			var ebg=eibg.getElementsByTagName("DIV")
+			var ne=ebg.length, i;
+			for(i=0; i<ne-nl; i+=1) eibg.removeChild(ebg[ne-i-1]);
+			for(i=0; i<nl-ne; i+=1) {
+				e = document.createElement("div");
+				e.className = "inbg";
+				e.style.top = (16*(ne+i))+"px";
+				e.style.backgroundColor = lineColors[(ne+i)%lineColors.length];
+				eibg.appendChild(e);
+			}
+			eibg.style.height = (6+16*nl)+"px";
+			ein.style.height = (16*nl)+"px";
+			ein.rows = nl;
 		}
-		eibg.style.height = (6+16*nl)+"px";
-		ein.style.height = (16*nl)+"px";
-		ein.rows = nl;
+		
+		if(ein.value[ein.selectionStart-1]==";") needHint = true;
+		if(needHint) {
+			var nline = ein.value.substr(0,ein.selectionStart).match(/\n/g);
+			if(nline) nline = nline.length;
+			else nline = 0;
+			hintbox.style.top = (2+16*nline)+"px";
+			hintbox.style.visibility = "visible";
+		} else {
+			hintbox.style.visibility = "hidden";
+		}
 	}
 	
 	// Replace physical constants in a string
