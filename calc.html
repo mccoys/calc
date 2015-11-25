@@ -3,66 +3,72 @@
 
 <head>
 <meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
 <style type="text/css">
 <!--
-	html, body { margin:0; padding:0; height:100%; width:100%}
+	
+	
+	html, body { margin:0; padding:0; height:100%; width:100%;}
 	body { background:#fff; }
 	#cont { height:100%; width:100%; display:table; text-align:center; }
 	#cont > div { width:100%; margin:0 auto; vertical-align:top; }
 	#incont { }
-	#incont2 { position:relative; width:606px; margin:0 auto; background-color:#f8f8f8; }
+	#incont2 { position:relative; width:40.5em; margin:0 auto; background-color:#f8f8f8; }
 	#in {
-		resize:none; outline:none; padding:3px;
+		resize:none; outline:none; padding:0.2em;
 		-webkit-appearance:none; -moz-appearance:none; appearance:none;
-		text-align:center; font: 15px sans-serif; color:#888;
-		box-shadow:0 0 4px #bbb; -webkit-box-shadow:0 0 4px #bbb; -moz-box-shadow:0 0 4px #bbb;
-		background: transparent; top:0;left:0; z-index:1000;
+		text-align:center; font: 1em sans-serif; color:#888;
+		box-shadow:0 0 0.3em #bbb; -webkit-box-shadow:0 0 0.3em #bbb; -moz-box-shadow:0 0 0.3em #bbb;
+		background: transparent; top:0; left:0; z-index:1000; margin:0; line-height:1.2em;
 	}
-	#in, .inbg {
-		position:absolute; margin:0;
-		width:600px; line-height:16px; border:none;
-	}
-	.inbg {
-		left:0; background-color:#f8f8f8; height:16px; z-index:0;
-		padding:0; margin:3px;
-	}
-	#hintbox {
-		position:absolute; left:612px; visibility:hidden;
-		font:13px sans-serif; color:#888; white-space: nowrap;
-	}
-	#outcont, #hcont { width:600px; padding:3px; margin:0 auto; }
-	#out, #help1, #help2, #help3, #help4 { margin:0}
-	#outcont { min-height:100px; background-color:none;}
-	#out { padding:20px 0 20px 0; font:19px serif; color:#777;}
-	#hcont { min-height:15px; background-color:#eee; box-shadow: 0 0 4px #bbb;
-		-webkit-box-shadow: 0 0 4px #bbb; -moz-box-shadow: 0 0 4px #bbb; }
+	.inbg { left:0; background-color:#f8f8f8; height:1.2em; z-index:0; padding:0; margin:0.2em; }
+	#in, .inbg { position:absolute; width:40em; border:none;}
+	#out { padding:1em 0; margin:0; font:1.2em serif; color:#777;}
+	#outcont, #hcont { width:40em; padding:0.2em; margin:0 auto; }
+	#outcont { min-height:5em; background-color:none;}
+	#hcont { min-height:1.2em; background-color:#eee; box-shadow: 0 0 0.3em #bbb;
+		-webkit-box-shadow: 0 0 0.3em #bbb; -moz-box-shadow: 0 0 0.3em #bbb; 
+		margin-bottom:1em}
 	#help1, #help2, #help3, #help4 {
-		float:left; font:15px serif; color:#777; cursor:pointer;
-		border-bottom:3px solid transparent;
+		float:left; font:1em serif; color:#777; cursor:pointer;
+		border-bottom:0.2em solid transparent;
 		-webkit-user-select: none; -moz-user-select: none;
 		-khtml-user-select: none; -ms-user-select: none;
+		width:25%; margin:0;
 	}
-	#help1 { width:150px; }
-	#help2 { width:150px; }
-	#help3 { width:150px; }
-	#help4 { width:150px; }
-	#sep {clear:both; width:100%; height:1px; line-height:1px;
-		border-top:1px solid #aaa; display:none }
+	#sep {clear:both; width:100%; height:0.1em; line-height:0.1em;
+		border-top:0.1em solid #aaa; display:none }
 	#help1c, #help2c, #help3c, #help4c {
-		clear:both; width:100%; height:300px;
-		display:none; overflow:auto; font:15px serif; color:#777;
+		clear:both; width:100%; height:21em;
+		display:none; overflow:auto; font:1em serif; color:#777;
 	}
 	.t2 { border:0; border-collapse:collapse; }
-	.t2 td:nth-child(1) { width:240px; padding-right:20px; text-align:right }
-	.t2 td:nth-child(2) { max-width:300px; padding-left:20px; text-align:left; font-style:italic }
+	.t2 td:nth-child(1) { width:15em; padding-right:2em; text-align:right }
+	.t2 td:nth-child(2) { max-width:20em; padding-left:2em; text-align:left; font-style:italic }
 	.t3 { width:100%; border:0; border-collapse:collapse; }
-	.t3 td:nth-child(1) { width:250px; text-align:right; }
+	.t3 td:nth-child(1) { width:15em; text-align:right; }
 	.t3a td:nth-child(1) {  font-style:italic }
-	.t3 td:nth-child(2) { width:100px; text-align:center; }
-	.t3 td:nth-child(3) { width:250px; text-align:left; font-style:italic}
-	.graphcont{ width:600px; height:300px; padding:0;
-		margin:0 auto; border:1px solid #dddddd; position:relative}
+	.t3 td:nth-child(2) { width:6em; text-align:center; }
+	.t3 td:nth-child(3) { width:15em; text-align:left; font-style:italic}
+	.graphcont{ width:40em; height:20em; padding:0;
+		margin:0 auto; border:0.1em solid #dddddd; position:relative}
 	
+	@media only screen and (max-width:42em){
+		#outcont, #hcont, #incont2 { width:100%; margin:0; font-size:0.9em; }
+		#in { width:100%; margin:0; }
+		.inbg { width:100%; margin:0.2em 0; }
+		#help1, #help2, #help3, #help4 { font-size:0.9em;}
+		#help1c, #help2c, #help3c, #help4c { font-size:0.9em; height:auto;}
+		#out { font-size:0.9em; }
+		#hcont { min-height:0.9em; }
+		#outcont, #in, #hcont { padding:0.2em 0; }
+		.t2 td:nth-child(1) { width:auto; min-width:3em; padding-right:0.9em; }
+		.t2 td:nth-child(2) { padding-left:0.9em; }
+		.t3 td:nth-child(1) { width:auto; }
+		.t3 td:nth-child(2) { width:3em; }
+		.t3 td:nth-child(3) { width:auto; }
+		.graphcont { width:100%; border-left:0; border-right:0; }
+	}
 -->
 </style>
 <link rel="shortcut icon" href="data:image/x-icon;base64,AAABAAEAEBACAAEAAQCwAAAAFgAAACgAAAAQAAAAIAAAAAEAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABYWFgAAAAAAP8AAAD/AAAA//8AAP//AAD//AAA//gAAD/4AAAf+AAAH/gAAB/8AAAf/wAAP/8AAP//AAD//wAAAP8AAAD/AAD/AAAA/wAAAP//AAD//wAA//wAAP/4AAA/+AAAH/gAAB/4AAAf/AAAH/8AAD//AAD//wAA//8AAAD/AAAA/wAA"/>
@@ -776,10 +782,9 @@
 				</g>
 			</g></svg>
 		</div>
-		<div id="incont clearfix">
+		<div id="incont">
 			<div id="incont2">
-				<textarea wrap="off" id="in" cols="86" rows="1" onkeydown="go(event);" onkeyup="resize();">me*c^2 in keV</textarea>
-				<div id="hintbox">&#x21E7; + &#8629;</div>
+				<textarea wrap="off" id="in" rows="1" onkeydown="go(event);" onkeyup="resize();">me*c^2 in keV</textarea>
 			</div>
 		</div>
 		<div id="outcont"><div id="out"> </div></div>
@@ -912,30 +917,28 @@
 	var ein  = document.getElementById("in" );
 	var eout = document.getElementById("out");
 	var eibg = document.getElementById("incont2");
-	var hintbox = document.getElementById("hintbox");
 	
 	// Color cycle for fonts
 	var textColors =["#777", "#BF881B", "#9C1B20", "#1B369C"];
 	var lineColors =["#f8f8f8", "#FDF8D3", "#FDD3D8", "#D3DFFD"];
 	
 	// Main callback, when Enter is pressed
-	var needResize = true, needHint = false;
+	var needResize = true, needCalc = true;
 	function go(e) {
 		needResize = false;
-		needHint = false;
+		needCalc = false;
 		if(typeof(e)=='undefined' && window.event) { e=window.event; }
 		switch(e.keyCode) {
 			case 13: // enter
-				if(e.shiftKey) {
 					n=parseInt(ein.rows) + 1;
-					ein.style.height = (6+16*n)+"px";
 					ein.rows = n;
 					needResize = true;
-				} else {
-					needHint = true;
-					e.preventDefault();
-					calcstart();
-				}
+					var i0 = ein.selectionStart, i1 = ein.selectionEnd, l = ein.value.length;
+					var v0 = ein.value[i0], v1 = ein.value[i1];
+					if( i0==0 || i1==0 || i0==l || i1==l ||
+					    ein.value[i0-1]=="\n" || ein.value[i0]=="\n" || 
+					    ein.value[i1-1]=="\n" || ein.value[i1]=="\n") needCalc = true;
+					console.log(needCalc);
 				break;
 			case 8: case 46:
 				needResize = true;
@@ -952,25 +955,16 @@
 			for(i=0; i<nl-ne; i+=1) {
 				e = document.createElement("div");
 				e.className = "inbg";
-				e.style.top = (16*(ne+i))+"px";
+				e.style.top = (1.2*(ne+i))+"em";
 				e.style.backgroundColor = lineColors[(ne+i)%lineColors.length];
 				eibg.appendChild(e);
 			}
-			eibg.style.height = (6+16*nl)+"px";
-			ein.style.height = (16*nl)+"px";
+			eibg.style.height = (0.4+1.2*nl)+"em";
+			ein.style.height = (1.2*nl)+"em";
 			ein.rows = nl;
 		}
 		
-		if(ein.value[ein.selectionStart-1]==";") needHint = true;
-		if(needHint) {
-			var nline = ein.value.substr(0,ein.selectionStart).match(/\n/g);
-			if(nline) nline = nline.length;
-			else nline = 0;
-			hintbox.style.top = (2+16*nline)+"px";
-			hintbox.style.visibility = "visible";
-		} else {
-			hintbox.style.visibility = "hidden";
-		}
+		if( needCalc ) calcstart();
 	}
 	
 	// Replace physical constants in a string
