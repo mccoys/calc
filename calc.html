@@ -923,12 +923,13 @@
 	var lineColors =["#f8f8f8", "#FDF8D3", "#FDD3D8", "#D3DFFD"];
 	
 	// Main callback, when Enter is pressed
-	var needResize = true, needCalc = true;
+	var needResize = true, needCalc = true, prevLines = 1;
 	function go(e) {
 		needResize = false;
 		needCalc = false;
 		if(typeof(e)=='undefined' && window.event) { e=window.event; }
-		switch(e.keyCode) {
+		var code = e.keyCode || e.which;
+		switch(code) {
 			case 13: // enter
 					n=parseInt(ein.rows) + 1;
 					ein.rows = n;
@@ -940,15 +941,17 @@
 					    ein.value[i1-1]=="\n" || ein.value[i1]=="\n") needCalc = true;
 					console.log(needCalc);
 				break;
-			case 8: case 46:
+			case 8: case 46: // backspace or delete
 				needResize = true;
 				break;
 		}
 		return false;
 	}
 	function resize() {
+		var nl=ein.value.split("\n").length;
+		if( nl != prevLines ) needResize = true;
+		
 		if( needResize ) {
-			var nl=ein.value.split("\n").length;
 			var ebg=eibg.getElementsByTagName("DIV")
 			var ne=ebg.length, i;
 			for(i=0; i<ne-nl; i+=1) eibg.removeChild(ebg[ne-i-1]);
@@ -960,9 +963,10 @@
 				eibg.appendChild(e);
 			}
 			eibg.style.height = (0.4+1.2*nl)+"em";
-			ein.style.height = (1.2*nl)+"em";
 			ein.rows = nl;
 		}
+		
+		prevLines = nl;
 		
 		if( needCalc ) calcstart();
 	}
