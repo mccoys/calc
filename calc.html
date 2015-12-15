@@ -12,7 +12,6 @@
 	body { background:#fff; }
 	#cont { height:100%; width:100%; display:table; text-align:center; }
 	#cont > div { width:100%; margin:0 auto; vertical-align:top; }
-	#incont { }
 	#incont2 { position:relative; width:40.5em; margin:0 auto; background-color:#f8f8f8; }
 	#in {
 		resize:none; outline:none; padding:0.2em;
@@ -42,6 +41,10 @@
 		clear:both; width:100%; height:21em;
 		display:none; overflow:auto; font:1em serif; color:#777;
 	}
+	#hintbox {
+		position:absolute; left:51em; visibility:hidden;
+		font:0.8em sans-serif; color:#888; white-space: nowrap;
+	}
 	.t2 { border:0; border-collapse:collapse; }
 	.t2 td:nth-child(1) { width:15em; padding-right:2em; text-align:right }
 	.t2 td:nth-child(2) { max-width:20em; padding-left:2em; text-align:left; font-style:italic }
@@ -52,6 +55,7 @@
 	.t3 td:nth-child(3) { width:15em; text-align:left; font-style:italic}
 	.graphcont{ width:40em; height:20em; padding:0;
 		margin:0 auto; border:0.1em solid #dddddd; position:relative}
+	#button { display:none; border:0; position:relative; z-index:2000; height:2.8em; margin-top:0.2em;}
 	
 	@media only screen and (max-width:42em){
 		#outcont, #hcont, #incont2 { width:100%; margin:0; font-size:0.9em; }
@@ -62,12 +66,15 @@
 		#out { font-size:0.9em; }
 		#hcont { min-height:0.9em; }
 		#outcont, #in, #hcont { padding:0.2em 0; }
+		#hintbox { display:none; }
 		.t2 td:nth-child(1) { width:auto; min-width:3em; padding-right:0.9em; }
 		.t2 td:nth-child(2) { padding-left:0.9em; }
 		.t3 td:nth-child(1) { width:auto; }
 		.t3 td:nth-child(2) { width:3em; }
 		.t3 td:nth-child(3) { width:auto; }
 		.graphcont { width:100%; border-left:0; border-right:0; }
+		#button { display:block; }
+		
 	}
 -->
 </style>
@@ -765,16 +772,16 @@
 <div id="cont">
 	<div>
 		<div style="height:36px">
-			<svg width="100" height="36"><g  transform="translate(50,18)">
-				<g style="fill:#fafafa;stroke:none">
+			<svg width="100" height="36"><g transform="translate(50,18)">
+				<g fill="#fafafa" stroke="none">
 					<rect width="20" height="4" x="20" y="-12"/><circle cx="30" cy="-2" r="4"/><circle cx="30" cy="-18" r="4"/>
 					<rect width="20" height="4" x="-40" y="8"/><circle cx="-30" cy="2" r="4"/><circle cx="-30" cy="18" r="4"/>
 				</g>
-				<g style="fill:#f2f2f2;stroke:none">
+				<g fill="#f2f2f2" stroke="none">
 					<rect width="20" height="4" x="-20" y="-12"/><circle cx="-10" cy="-2" r="4"/><circle cx="-10" cy="-18" r="4"/>
 					<rect width="20" height="4" x="0" y="8"/><circle cx="10" cy="2" r="4"/><circle cx="10" cy="18" r="4"/>
 				</g>
-				<g style="fill:#666666;stroke:none">
+				<g fill="#666666" stroke="none">
 					<rect width="10" height="2" x="-10" y="-10"/>
 					<rect width="10" height="2" x="0" y="8"/>
 					<path d="M-10 2 A 4 4 0 1 0 -10 -6 Z"/>
@@ -785,6 +792,18 @@
 		<div id="incont">
 			<div id="incont2">
 				<textarea wrap="off" id="in" rows="1" onkeydown="go(event);" onkeyup="resize();">me*c^2 in keV</textarea>
+				<div id="hintbox">&#x21E7; + &#8629;</div>
+			</div>
+			<div id="button">
+				<svg width="4em" height="2.8em" viewBox="-1 0 2 1.4">
+					<g fill="#f2f2f2" stroke="none">
+						<path d="M -.7 0 L 0 1.4 L .7 0"/>
+					</g>
+					<g fill="#ddd" stroke="none">
+						<path d="M -.45 .15 L 0 1.1 L .45 .15"/>
+					</g>
+					<rect x="-1" y="0" width="2" height="1.4" fill-opacity="0" stroke-opacity="0" onclick="go(1);resize()"/>
+				</svg>
 			</div>
 		</div>
 		<div id="outcont"><div id="out"> </div></div>
@@ -917,20 +936,33 @@
 	var ein  = document.getElementById("in" );
 	var eout = document.getElementById("out");
 	var eibg = document.getElementById("incont2");
+	var hintbox = document.getElementById("hintbox");
 	
 	// Color cycle for fonts
 	var textColors =["#777", "#BF881B", "#9C1B20", "#1B369C"];
 	var lineColors =["#f8f8f8", "#FDF8D3", "#FDD3D8", "#D3DFFD"];
 	
 	// Main callback, when Enter is pressed
-	var needResize = true, needCalc = true, prevLines = 1;
+	var needResize = true, needCalc = true, needHint = false, prevLines = 1;
 	function go(e) {
 		needResize = false;
 		needCalc = false;
-		if(typeof(e)=='undefined' && window.event) { e=window.event; }
-		var code = e.keyCode || e.which;
+		needHint = false;
+		var code;
+		if(typeof(e)=='number') { code=e; }
+		else {
+			if(typeof(e)=='undefined' && window.event) { e=window.event; }
+			code = e.keyCode || e.which;
+		}
 		switch(code) {
+			case 1: // click on button
+				needCalc = true;
+				break;
 			case 13: // enter
+				if( e.shiftKey ) {
+					needCalc = true;
+					e.preventDefault();
+				} else {
 					n=parseInt(ein.rows) + 1;
 					ein.rows = n;
 					needResize = true;
@@ -939,7 +971,8 @@
 					if( i0==0 || i1==0 || i0==l || i1==l ||
 					    ein.value[i0-1]=="\n" || ein.value[i0]=="\n" || 
 					    ein.value[i1-1]=="\n" || ein.value[i1]=="\n") needCalc = true;
-					console.log(needCalc);
+					needHint = true;
+				}
 				break;
 			case 8: case 46: // backspace or delete
 				needResize = true;
@@ -947,6 +980,7 @@
 		}
 		return false;
 	}
+	
 	function resize() {
 		var nl=ein.value.split("\n").length;
 		if( nl != prevLines ) needResize = true;
@@ -964,6 +998,18 @@
 			}
 			eibg.style.height = (0.4+1.2*nl)+"em";
 			ein.rows = nl;
+			ein.style.height = (1.2*nl)+"em";
+		}
+		
+		if(ein.value[ein.selectionStart-1]==";") needHint = true;
+		if(needHint) {
+			var nline = ein.value.substr(0,ein.selectionStart).match(/\n/g);
+			if(nline) nline = nline.length;
+			else nline = 0;
+			hintbox.style.top = (0.4+1.2/0.8*nline)+"em";
+			hintbox.style.visibility = "visible";
+		} else {
+			hintbox.style.visibility = "hidden";
 		}
 		
 		prevLines = nl;
