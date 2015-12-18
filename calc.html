@@ -53,7 +53,7 @@
 	.t3a td:nth-child(1) {  font-style:italic }
 	.t3 td:nth-child(2) { width:6em; text-align:center; }
 	.t3 td:nth-child(3) { width:15em; text-align:left; font-style:italic}
-	.graphcont{ width:40em; height:20em; padding:0;
+	.graphcont{ width:33em; height:20em; padding:0;
 		margin:0 auto; border:0.1em solid #dddddd; position:relative}
 	#button { display:none; border:0; position:relative; z-index:2000; height:2.8em; margin-top:0.2em;}
 	
@@ -1026,15 +1026,12 @@
 	// Initiate calculation
 	var graph;
 	function calcstart() {
-		eout.innerHTML = "";
+		var sin=ein.value, sout ="", colors=[], s=[], t, k=0, i, j;
 		
-		var sin=ein.value, sout ="", varout=[], varname,
-			i,j,k,l,u,v,us,newu,newu0,s,ss,sss,tm,tp,ok,
-			gcont,g,gw,gh,rect,zoom,lx,ly,x,y,w,h,f,b,expr;
+		eout.innerHTML = "";
 		
 		// Split output by new lines or ";"
 		sin=sin.split("\n");
-		var colors=[], s=[], t, k=0;
 		for(i=0; i<sin.length; i+=1) {
 			t = sin[i];
 			t = t.replace(/;+/g,";").split(";");
@@ -1057,7 +1054,7 @@
 		sin=sin.split(";");
 		for(j=0; j<sin.length; j+=1) {
 			s=sin[j];
-			if(s.trim().length==0) {continue}
+			if(s.trim().length==0) continue;
 			
 			// if begins with "graph", then graph something
 			graph=false;
@@ -1066,173 +1063,190 @@
 				s=s.trim().substring(6);
 			}
 			
-			// if "in" is included, it means a change of units
-			s=s.replace(re_in,";").split(';');
-			newu="";
-			if(s.length>1) {
-				if(graph) { eout.innerHTML = "Cannot graph and change units."; return; }
-				newu0=s[1];
-				newu=newu0.replace(re_s,"");
-				newu="("+newu+")"; // newu contains the target units
-			}
-			s=s[0]; // s now contains the expression (before "in")
-			
-			// if "=" appears, then it means an assignment
-			s=s.replace(re_eq,"$1;").split(';');
-			varname="";
-			if(s.length>1) {
-				if(graph) { eout.innerHTML = "Cannot graph an assignment."; return; }
-				varname=s[0].trim(); s[0]=s[1]; // save variable name
-				if(!/^[a-zA-Z]+\w*$/.test(varname)) { // verify variable name
-					eout.innerHTML = "Unaccepted variable name: "+varname; return; }
-				v="("+varname+")";
-				if(v!=constants(v)) { // verify not ambiguous w constants
-					eout.innerHTML = "Variable name ambiguous with physical constants: "+varname; return; }
-				u=segment(varname); u=u[0];
-				if(u!="Error:") { // verify not ambiguous w units	
-					eout.innerHTML = "Variable name ambiguous with units: "+varname; return; }
-			}
-			s=s[0]; // s now contains the expression
-			expr = "";
-			if(sin.length>1 && varname.length==0) expr=s;
-	
-			s="("+s+")";
-			// constants
-			s=constants(s);
-			// user-defined variables
-			for(i=0;i<varout.length;i+=1) { s=s.replace(varout[i][0],"$1("+varout[i][1]+")$2"); }
-			// manage e, E, + and - (the - are replaced by +(-1)*)
-			s=s.replace(re_em,'@').replace(re_ep,'#').replace(re_pm,'$1+(-1)*');
-			// Manage units
-			s=s.replace(re_unit1,"$1*$2");
-			// Remove spaces; Replace (+ with (
-			s=s.replace(re_s,"").replace(re_ss,"(").replace(")(",")*(");
-
-			// Calculate. The output should be a 2-element array containing 
-			// the result and the units.
-			s=calc(s);
-			
-			// If the output contains "Error:" then it has an error.
-			// Else, we make the output nice.
-			if(s[0]!="Error:") {
-				if(graph) {
-					// Create the svg container
-					gcont=document.createElement("div"); g=document.createElementNS(svgns,"svg");
-					gcont.className="graphcont";
-					gcont.appendChild(g); eout.appendChild(gcont);
-					gw=gcont.clientWidth ; g.setAttribute("width" ,gw+"px");
-					gh=gcont.clientHeight; g.setAttribute("height",gh+"px");
-					// We create "plot" which groups all elements in the graph for easy scrolling
-					plot=g.Group();
-					// Create a function that represents the curve, and find the best boundaries
-					plot.curveEq = new Function("x","return "+s[0].split("|").join("x")+";");
-					b=findBestBounds(plot);
-					if(!b) { eout.innerHTML = "Error:<br/>cannot graph the function."; }
-					plot.init(b[0],b[1],b[2],b[3],gw,gh); // initialize the plot
-					// Create a transparent overlay for detecting mousedown
-					rect=g.Rect(0,0,gw,gh,"transparent","transparent",0);
-					rect.onmousedown = moveBegin;
-					// Create zoom buttons
-					x=5;y=5;w=14;h=14;
-					g.ZoomButton(x,y,w,h,"+").z=[1.1,1.1];
-					g.ZoomButton(x,y+h,w,h,"-").z=[1/1.1,1/1.1];
-					x+=w*2; w*=2/3; h*=2/3;
-					g.ZoomButton(x,y,w,h,"+").z=[1,1.1];
-					g.ZoomButton(x,y+2*h,w,h,"-").z=[1,1/1.1];
-					x-=w; y+=h;
-					g.ZoomButton(x+2*w,y,w,h,"+").z=[1.1,1];
-					g.ZoomButton(x,y,w,h,"-").z=[1/1.1,1];
-					// Draw the plot
-					plot.fullUpdate();
-					continue;
-				}
-			
-				// Now we make units readable
-				u=""; v=s[0];
-				if(newu=="") { // if no change of units requested,
-					for(l=0;l<8;l+=1) { // for each of m kg s A K mol cd rad,  
-						if(s[1][l]) { // print unit if exists.
-							u+=un[l];
-							if(s[1][l]!=1) { u+="<sup>"+s[1][l]+"</sup>"; }
-							u+=" ";
-						}
-					}
-				} else { // if change of units requested,
-					us=calc(newu); // calculate units as if normal expression.
-					if(!arrayequal(us[1],s[1])) { // error if different units.
-						eout.innerHTML = "Error:<br/>requested units don't match.";
-						return;
-					}
-					u=newu0.replace(/\^([0-9.\-]+)/g,"<sup>$1</sup>").replace(/\*/g,"&sdot;");
-					v/=us[0]; // divide the original result by the new units.
-				}
-				// Resolve some problems of precision
-				v=eval(eval(v).toExponential(15))+"";
-				if(v>1000. && v.length>10) { v=eval(v).toExponential(10); }
-				ss = v.split('e');
-				sss = ss[0];
-				l = sss.length-1;
-				if(l>8) {
-					sss = (sss.replace(/[0-9]/g,"0").substring(0,l))+"1";
-					tm=(parseFloat(ss[0])-parseFloat(sss))+"";
-					tp=(parseFloat(ss[0])+parseFloat(sss))+"";
-					if     (tm.length<l-4) { ss[0]=tm; }
-					else if(tp.length<l-4) { ss[0]=tp; }
-				}
-				// Space every 3 digits
-				sss = ss[0].split(".");
-				k = sss[0].length % 3;
-				try{ sss[0] = sss[0].substring(0,k) + " "
-							+ sss[0].substring(k).match(/[0-9]{3}/g).join(" "); }
-				catch(e) {}
-				if(sss.length>1) {
-					sss[1]=sss[1].replace(/0*$/,""); // remove trailing zeros
-					k = sss[1].length - (sss[1].length % 3);
-					try{ sss[1] = sss[1].substring(0,k).match(/[0-9]{3}/g).join(" ")
-								+ " " + sss[1].substring(k); }
-					catch(e) {}
-				} else { sss.push(""); }
-				
-				if(sss[1].length==0) { ss[0]=sss[0]; }
-				else { ss[0] = sss.join("."); }
-	
-				// Rebuild the string
-				v = ss[0];
-				if(ss.length>1) {
-					ss[1]="10<sup>"+parseInt(ss[1])+"</sup>"; // Convert exponentiation
-					if(v=="1") { v=ss[1]; }
-					else { v=v+" &#215; "+ss[1]; }
-				}
-					
-				// Manage storing to a variable
-				if(varname.length>0) {
-					us=" ";
-					for(l=0;l<8;l+=1) { // for each of m kg s A K mol cd rad,  
-						if(s[1][l]) { // print unit if exists.
-							if(l>0) {us+="*";}
-							us+=un[l];
-							if(s[1][l]!=1) { us+="^"+s[1][l]; }
-						}
-					}
-					// We check whether the variable already exists. If yes, replace it
-					for(l=0;l<varout.length;l+=1)
-						if(varname==varout[l][2])
-							varout.splice(l,1);
-					// In varout, we store a regexp to recognize the variable, and a replacement value
-					varout.push([new RegExp("(\\W)"+varname+"(\\W)","g"), s[0]+us, varname]);
-					v = varname+" = "+v;
-				} else if(expr.length>0) {
-					v = expr+" = "+v;
-				}
-				
-				s[0]=v; s[1]=u;
-			}
+			s = calcOneLine(s, sin);
+			if( s.length==0 ) continue;
 			
 			// Output
 			if(j>0) {eout.innerHTML += "<br/>";}
 			eout.innerHTML += "<font style=\"color:"+colors[j]+"\">"+s[0]+"</font>&nbsp;&nbsp;&nbsp;<font style=\"color:#77b\">"+s[1]+"</font>";
 		}
 	}
+	
+	
+	// Calculate one given input line
+	function calcOneLine(s, sin) {
+		var varout=[], varname,
+			i,j,k,l,u,v,us,newu,newu0,s,ss,sss,tm,tp,ok,
+			gcont,g,gw,gh,rect,zoom,lx,ly,x,y,w,h,f,b,expr;
+		
+		// if "in" is included, it means a change of units
+		s=s.replace(re_in,";").split(';');
+		newu="";
+		if(s.length>1) {
+			if(graph) return ["Error: Cannot graph and change units.",""];
+			newu0=s[1];
+			newu=newu0.replace(re_s,"");
+			newu="("+newu+")"; // newu contains the target units
+		}
+		s=s[0]; // s now contains the expression (before "in")
+		
+		// if "=" appears, then it means an assignment
+		s=s.replace(re_eq,"$1;").split(';');
+		varname="";
+		if(s.length>1) {
+			if(graph) return ["Error: Cannot graph an assignment.",""];
+			varname=s[0].trim(); s[0]=s[1]; // save variable name
+			if(!/^[a-zA-Z]+\w*$/.test(varname)) // verify variable name
+				return ["Error: Unaccepted variable name: "+varname,""];
+			v="("+varname+")";
+			if(v!=constants(v)) // verify not ambiguous w constants
+				return ["Error: Variable name ambiguous with physical constants: "+varname,""];
+			u=segment(varname); u=u[0];
+			if(u!="Error:") // verify not ambiguous w units	
+				return ["Error: Variable name ambiguous with units: "+varname,""];
+		}
+		s=s[0]; // s now contains the expression
+		expr = "";
+		if(sin.length>1 && varname.length==0) expr=s;
+		
+		s="("+s+")";
+		// constants
+		s=constants(s);
+		// user-defined variables
+		for(i=0;i<varout.length;i+=1) { s=s.replace(varout[i][0],"$1("+varout[i][1]+")$2"); }
+		// manage e, E, + and - (the - are replaced by +(-1)*)
+		s=s.replace(re_em,'@').replace(re_ep,'#').replace(re_pm,'$1+(-1)*');
+		// Manage units
+		s=s.replace(re_unit1,"$1*$2");
+		// Remove spaces; Replace (+ with (
+		s=s.replace(re_s,"").replace(re_ss,"(").replace(")(",")*(");
+
+		// Calculate. The output should be a 2-element array containing 
+		// the result and the units.
+		s=calc(s);
+		
+		// If the output contains "Error:" then it has an error.
+		if(s[0]=="Error:") return [s.join(" "), ""];
+		
+		// Otherwise, we make the output nice.
+		if(graph) {
+			// Create the svg container
+			gcont=document.createElement("div"); g=document.createElementNS(svgns,"svg");
+			gcont.className="graphcont";
+			gcont.appendChild(g); eout.appendChild(gcont);
+			gw=gcont.clientWidth ; g.setAttribute("width" ,gw+"px");
+			gh=gcont.clientHeight; g.setAttribute("height",gh+"px");
+			// We create "plot" which groups all elements in the graph for easy scrolling
+			plot=g.Group();
+			// Create a function that represents the curve, and find the best boundaries
+			plot.curveEq = new Function("x","return "+s[0].split("|").join("x")+";");
+			b=findBestBounds(plot);
+			if(!b) return ["Error: cannot graph the function.", ""];
+			plot.init(b[0],b[1],b[2],b[3],gw,gh); // initialize the plot
+			// Create a transparent overlay for detecting mousedown
+			rect=g.Rect(0,0,gw,gh,"transparent","transparent",0);
+			rect.onmousedown = moveBegin;
+			// Create zoom buttons
+			x=5;y=5;w=14;h=14;
+			g.ZoomButton(x,y,w,h,"+").z=[1.1,1.1];
+			g.ZoomButton(x,y+h,w,h,"-").z=[1/1.1,1/1.1];
+			x+=w*2; w*=2/3; h*=2/3;
+			g.ZoomButton(x,y,w,h,"+").z=[1,1.1];
+			g.ZoomButton(x,y+2*h,w,h,"-").z=[1,1/1.1];
+			x-=w; y+=h;
+			g.ZoomButton(x+2*w,y,w,h,"+").z=[1.1,1];
+			g.ZoomButton(x,y,w,h,"-").z=[1/1.1,1];
+			// Draw the plot
+			plot.fullUpdate();
+			return [];
+		}
+		
+		// Now we make units readable
+		u=""; v=s[0];
+		if(newu=="") { // if no change of units requested,
+			for(l=0;l<8;l+=1) { // for each of m kg s A K mol cd rad,  
+				if(s[1][l]) { // print unit if exists.
+					u+=un[l];
+					if(s[1][l]!=1) { u+="<sup>"+s[1][l]+"</sup>"; }
+					u+=" ";
+				}
+			}
+		} else { // if change of units requested,
+			us=calc(newu); // calculate units as if normal expression.
+			if(!arrayequal(us[1],s[1])) // error if different units.
+				return ["Error: requested units don't match.",""];
+			
+			u=newu0.replace(/\^([0-9.\-]+)/g,"<sup>$1</sup>").replace(/\*/g,"&sdot;");
+			v/=us[0]; // divide the original result by the new units.
+		}
+		// Resolve some problems of precision
+		v=eval(eval(v).toExponential(15))+"";
+		if(v>1000. && v.length>10) { v=eval(v).toExponential(10); }
+		ss = v.split('e');
+		sss = ss[0];
+		l = sss.length-1;
+		if(l>8) {
+			sss = (sss.replace(/[0-9]/g,"0").substring(0,l))+"1";
+			tm=(parseFloat(ss[0])-parseFloat(sss))+"";
+			tp=(parseFloat(ss[0])+parseFloat(sss))+"";
+			if     (tm.length<l-4) { ss[0]=tm; }
+			else if(tp.length<l-4) { ss[0]=tp; }
+		}
+		// Space every 3 digits
+		sss = ss[0].split(".");
+		k = sss[0].length % 3;
+		try{ sss[0] = sss[0].substring(0,k) + " "
+					+ sss[0].substring(k).match(/[0-9]{3}/g).join(" "); }
+		catch(e) {}
+		if(sss.length>1) {
+			sss[1]=sss[1].replace(/0*$/,""); // remove trailing zeros
+			k = sss[1].length - (sss[1].length % 3);
+			try{ sss[1] = sss[1].substring(0,k).match(/[0-9]{3}/g).join(" ")
+						+ " " + sss[1].substring(k); }
+			catch(e) {}
+		} else { sss.push(""); }
+		
+		if(sss[1].length==0) { ss[0]=sss[0]; }
+		else { ss[0] = sss.join("."); }
+	
+		// Rebuild the string
+		v = ss[0];
+		if(ss.length>1) {
+			ss[1]="10<sup>"+parseInt(ss[1])+"</sup>"; // Convert exponentiation
+			if(v=="1") { v=ss[1]; }
+			else { v=v+" &#215; "+ss[1]; }
+		}
+			
+		// Manage storing to a variable
+		if(varname.length>0) {
+			us=" ";
+			for(l=0;l<8;l+=1) { // for each of m kg s A K mol cd rad,  
+				if(s[1][l]) { // print unit if exists.
+					if(l>0) {us+="*";}
+					us+=un[l];
+					if(s[1][l]!=1) { us+="^"+s[1][l]; }
+				}
+			}
+			// We check whether the variable already exists. If yes, replace it
+			for(l=0;l<varout.length;l+=1)
+				if(varname==varout[l][2])
+					varout.splice(l,1);
+			// In varout, we store a regexp to recognize the variable, and a replacement value
+			varout.push([new RegExp("(\\W)"+varname+"(\\W)","g"), s[0]+us, varname]);
+			v = varname+" = "+v;
+		} else if(expr.length>0) {
+			v = expr+" = "+v;
+		}
+		
+		s[0]=v; s[1]=u;
+		
+		return s;
+	}
+	
+	
+	
+	
+	
 	
 	// Parse the string and calculate
 	function calc(s) {
