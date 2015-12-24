@@ -56,6 +56,16 @@
 	.graphcont{ width:33em; height:20em; padding:0;
 		margin:0 auto; border:0.1em solid #dddddd; position:relative}
 	#button { display:none; border:0; position:relative; z-index:2000; height:2.8em; margin-top:0.2em;}
+	#rangeMenu{ position:absolute; width:10em; height:5.2em; display:table;
+		top:7em; left:11em; background-color:#ddd;
+		line-height:1.3em; padding:0.4em; border:0.1em solid #777; }
+	.menuItem { display:table-row; }
+	.menuItem input {
+		-webkit-appearance:none; -moz-appearance:none; appearance:none;
+		border:1px solid #ccc; background-color:#d8d8d8; color:#777;
+		width:9em; text-align:center;
+	}
+	.menuItem > * { display:table-cell; }
 	
 	@media only screen and (max-width:42em){
 		#outcont, #hcont, #incont2 { width:100%; margin:0; font-size:0.9em; }
@@ -154,7 +164,24 @@
  		zoom.Line(x+w/5,y+h/2,x+4*w/5,y+h/2,"#777",1.5);
   		return zoom;
  	};
- 	
+	SVGElement.prototype.RangeButton = function(x,y,w,h,gcont) {
+		var button=this.Group();
+ 		button.cont=gcont;
+		button.onmousedown=chooseRange;
+		button.setAttribute("cursor","pointer");
+		button.Rect(x,y,w,h,"#eee","#ccc",1);
+		button.Line(x+w,y,x,y+h,"#777",1.);
+		var lineLength=Math.sqrt(w*w+h*h), lineAngle=Math.atan2(h,w);
+		var arrowLength = 0.2*lineLength, arrowAngle = 0.4;
+		var u0 = arrowLength*Math.cos(lineAngle-arrowAngle), v0 = arrowLength*Math.sin(lineAngle-arrowAngle);
+		var u1 = arrowLength*Math.cos(lineAngle+arrowAngle), v1 = arrowLength*Math.sin(lineAngle+arrowAngle);
+		button.Line(x+w,y,x+w-u0,y+v0,"#777",1.);
+		button.Line(x+w,y,x+w-u1,y+v1,"#777",1.);
+		button.Line(x,y+h,x+u0,y+h-v0,"#777",1.);
+		button.Line(x,y+h,x+u1,y+h-v1,"#777",1.);
+		return button;
+	};
+	
 	// Functions controling the SVG plot
 	function findBestBounds(plot) { // Find the best plot limits automatically
 		var xm,xM,ym,yM,f=plot.curveEq;
@@ -598,6 +625,61 @@
 		zoom.firstChild.setAttribute("fill","#eee");
 		zplot.fullUpdate();
 		zoom=undefined; zplot=undefined;
+	}
+	
+	// Display menu for changing plot range
+	function chooseRange(evt) {
+		var cont=evt.target.parentNode.cont;
+		var svg=cont.firstChild;
+		var plot=svg.firstChild;
+		var w = svg.getAttribute("width"), h = svg.getAttribute("height");  
+		// Create a gray overlay
+		var rect=svg.Rect(0,0,w,h,"rgba(0,0,0,0.2)","transparent",0);
+		// Create the menu
+		var menu=document.createElement("div");
+		menu.id = "rangeMenu";
+		createTextItem(menu, "x-min", ""+plot.x1)
+		createTextItem(menu, "x-max", ""+plot.x2)
+		createTextItem(menu, "y-min", ""+plot.y1)
+		createTextItem(menu, "y-max", ""+plot.y2)
+		cont.appendChild(menu);
+		// Make overlay clickable to quit the menu
+		rect.onclick=setRange;
+	}
+	// Create each item of the plot-range menu
+	function createTextItem(menu, title, value) {
+		var item = document.createElement("div");
+		item.className = "menuItem";
+		var name = document.createElement("div");
+		name.innerHTML = title;
+		item.appendChild(name);
+		var input = document.createElement("input");
+		input.type = "text";
+		input.value = value;
+		input.id = title;
+		item.appendChild(input);
+		menu.appendChild(item);
+	}
+	// Change the plot range and remove menu
+	function setRange(evt) {
+		var svg = evt.target.parentNode;
+		var plot = svg.firstChild;
+		// Apply the range
+		var x1=document.getElementById("x-min").value;
+		var x2=document.getElementById("x-max").value;
+		var y1=document.getElementById("y-min").value;
+		var y2=document.getElementById("y-max").value;
+		plot.s[0] = plot.b[0] / (x2-x1);
+		plot.t[0] = -plot.s[0]*x1;
+		plot.s[1] = plot.b[1] / (y1-y2);
+		plot.t[1] = -plot.s[1]*y2;
+		plot.setAttribute("transform","translate("+plot.t[0]+","+plot.t[1]+")");
+		plot.fullUpdate();
+		// remove the menu
+		var menu = document.getElementById("rangeMenu");
+		menu.parentNode.removeChild(menu);
+		// remove the gray overlay
+		svg.removeChild(evt.target);
 	}
 	
 	// number of decimal places
@@ -1157,6 +1239,9 @@
 			x-=w; y+=h;
 			g.ZoomButton(x+2*w,y,w,h,"+").z=[1.1,1];
 			g.ZoomButton(x,y,w,h,"-").z=[1/1.1,1];
+			// Create range button
+			x+=3.5*w; y-=.5*h; w*=2; h*=2;
+			g.RangeButton(x,y,w,h,gcont);
 			// Draw the plot
 			plot.fullUpdate();
 			return [];
