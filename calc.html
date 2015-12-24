@@ -943,7 +943,7 @@
 	var lineColors =["#f8f8f8", "#FDF8D3", "#FDD3D8", "#D3DFFD"];
 	
 	// Main callback, when Enter is pressed
-	var needResize = true, needCalc = true, needHint = false, prevLines = 1;
+	var needResize = true, needCalc = true, needHint = false, prevLines = 1, varout;
 	function go(e) {
 		needResize = false;
 		needCalc = false;
@@ -1029,6 +1029,7 @@
 		var sin=ein.value, sout ="", colors=[], s=[], t, k=0, i, j;
 		
 		eout.innerHTML = "";
+		varout = [];
 		
 		// Split output by new lines or ";"
 		sin=sin.split("\n");
@@ -1075,7 +1076,7 @@
 	
 	// Calculate one given input line
 	function calcOneLine(s, sin) {
-		var varout=[], varname,
+		var varname,
 			i,j,k,l,u,v,us,newu,newu0,s,ss,sss,tm,tp,ok,
 			gcont,g,gw,gh,rect,zoom,lx,ly,x,y,w,h,f,b,expr;
 		
@@ -1242,10 +1243,6 @@
 		
 		return s;
 	}
-	
-	
-	
-	
 	
 	
 	// Parse the string and calculate
