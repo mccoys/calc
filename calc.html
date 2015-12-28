@@ -45,6 +45,9 @@
 		position:absolute; left:51em; visibility:hidden;
 		font:0.8em sans-serif; color:#888; white-space: nowrap;
 	}
+	.t1 { width:100%; }
+	.t1 tr td { padding:.5em 0; }
+	.t1 tr:nth-child(even) { background-color:#e5e5e5; }
 	.t2 { border:0; border-collapse:collapse; }
 	.t2 td:nth-child(1) { width:15em; padding-right:2em; text-align:right }
 	.t2 td:nth-child(2) { max-width:20em; padding-left:2em; text-align:left; font-style:italic }
@@ -436,7 +439,7 @@
 		// Create curve
 		this.quickCurve=this.Polyline([0,0],"#4bb",2);
 		this.curve=this.Path("","#4bb",2);
-		this.np=2000;
+		this.np=1000;
 		this.points=new Array(2*this.np);
 		
 		// Add replotting management after scrolling
@@ -494,7 +497,7 @@
 		
 		this.quickUpdate = function() {
 			this.update();
-			// Update curve with 2000 points
+			// Update curve with some points
 			var l=(this.M[0]-this.m[0])/this.np;
 			var i=0,y;
 			for(var x=this.m[0]; x<this.M[0]; x+=l) {
@@ -839,7 +842,7 @@
 	var nu1=ru.length;
 	
 	// other regular expressions
-	var re_err=/[ a-zA-Z0-9=;+\-^*_\/().,]/g, re_in=/ in /, re_eq=/(.+)=/,
+	var re_err=/[ a-zA-Z0-9=+\-^*_\/().,\n]/g, re_in=/ in /, re_eq=/(.+)=/,
 		re_ep =/[Ee]\+?(?=[0-9])/g, re_em=/[Ee]-(?=[0-9])/g,
 		re_ep1=/#/g, re_em1=/@/g,
 		re_pm=/([^\^])-/g, re_s=/\s/g, re_ss=/\(\+/g, re_par=/^\s*\((.+)\)\s*$/g,
@@ -896,8 +899,7 @@
 			<div id="help4" onclick="help(this)">Functions</div>
 			<div id="sep"></div>
 			<div id="help1c">
-				<br/>
-				<table style="width:100%"><tbody id="examples">
+				<table class="t1"><tbody id="examples">
 					<tr><td>2*3</td></tr>
 					<tr><td>18 m * 2 m</td></tr>
 					<tr><td>4 watt * 8 second</td></tr>
@@ -906,7 +908,7 @@
 					<tr><td>c</td></tr>
 					<tr><td>1/(4*pi*e0)</td></tr>
 					<tr><td>( e0*(3keV) / (e^2*1e23 cm^-3) )^0.5 in nanometer</td></tr>
-					<tr><td>x = 1 m; y = 4 km; x*y/(x^2+y^2)</td></tr>
+					<tr><td>x = 1 m<br />y = 4 km<br />x*y/(x^2+y^2)</td></tr>
 					<tr><td>graph x^2</td></tr>
 				</tbody></table>
 			</div>
@@ -1113,19 +1115,6 @@
 		eout.innerHTML = "";
 		varout = [];
 		
-		// Split output by new lines or ";"
-		sin=sin.split("\n");
-		for(i=0; i<sin.length; i+=1) {
-			t = sin[i];
-			t = t.replace(/;+/g,";").split(";");
-			for(j=0; j<t.length; j+=1) {
-				s.push(t[j]);
-				colors.push(textColors[k%textColors.length]);
-			}
-			k+=1;
-		}
-		sin = s.join(";");
-		
 		// wrong characters
 		var err=sin.replace(re_err,'');
 		if(err.length>0) {
@@ -1133,9 +1122,12 @@
 			return;
 		}
 		
-		// loop each of the inputs delimited by ";"
-		sin=sin.split(";");
+		// loop each of the inputs lines
+		sin=sin.split("\n");
 		for(j=0; j<sin.length; j+=1) {
+			
+			colors.push(textColors[j%textColors.length]);
+			
 			s=sin[j];
 			if(s.trim().length==0) continue;
 			
@@ -1605,7 +1597,11 @@
 	var exa = document.getElementById("examples").getElementsByTagName("tr");
 	for(var k=0; k<exa.length; k+=1) {
 		exa[k].style.cursor = "pointer";
-		exa[k].onclick = function(){ein.value=this.childNodes[0].innerHTML; resize(); calcstart();};
+		exa[k].onclick = function(){
+			ein.value=this.childNodes[0].innerHTML.replace("<br>", "\n","g");
+			resize();
+			calcstart();
+		};
 	}
 	
 	// If the URL contains the formula embedded, then use that
