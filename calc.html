@@ -56,11 +56,11 @@
 	.t3a td:nth-child(1) {  font-style:italic }
 	.t3 td:nth-child(2) { width:6em; text-align:center; }
 	.t3 td:nth-child(3) { width:15em; text-align:left; font-style:italic}
-	.graphcont{ width:33em; height:20em; padding:0;
+	.graphcont{ width:100%; height:20em; padding:0;
 		margin:0 auto; border:0.1em solid #dddddd; position:relative}
 	#button { display:none; border:0; position:relative; z-index:2000; height:2.8em; margin-top:0.2em;}
-	#rangeMenu{ position:absolute; width:10em; height:5.2em; display:table;
-		top:7em; left:11em; background-color:#ddd;
+	#rangeMenu{ position:absolute; width:15em; height:5.2em; display:table;
+		top:3em; left:11em; background-color:#ddd;
 		line-height:1.3em; padding:0.4em; border:0.1em solid #777; }
 	.menuItem { display:table-row; }
 	.menuItem input {
@@ -87,7 +87,6 @@
 		.t3 td:nth-child(3) { width:auto; }
 		.graphcont { width:100%; border-left:0; border-right:0; }
 		#button { display:block; }
-		
 	}
 -->
 </style>
@@ -1032,20 +1031,33 @@
 
 <script language="javascript">
 <!--
-		
+	
 	// HTML elements
 	var ein  = document.getElementById("in" );
 	var eout = document.getElementById("out");
 	var eibg = document.getElementById("incont2");
 	var hintbox = document.getElementById("hintbox");
 	
-	// Initial trick to solve some bug with text height in some browsers
-	ein.rows = 1;
-	var height1 = parseFloat(window.getComputedStyle(ein)["height"]);
-	ein.rows = 2;
-	var height2 = parseFloat(window.getComputedStyle(ein)["height"]);
-	var inputLineHeight = height2-height1;
-	var inputPadding = parseFloat(window.getComputedStyle(ein)["padding-top"]) + parseFloat(window.getComputedStyle(ein)["padding-bottom"]);
+	// Catch window resizing event
+	window.addEventListener('resize', function() {
+		repair();
+		resize();
+	}, true);
+	
+	// Trick to fix some bug with text height in some browsers
+	var inputLineHeight, inputPadding;
+	function repair(event) {
+		var nrows = ein.rows, text = ein.value;
+		ein.style.height = "auto";
+		ein.rows = 1;
+		var height1 = parseFloat(window.getComputedStyle(ein)["height"]);
+		ein.rows = 2;
+		var height2 = parseFloat(window.getComputedStyle(ein)["height"]);
+		inputLineHeight = height2-height1;
+		inputPadding = parseFloat(window.getComputedStyle(ein)["padding-top"]) + parseFloat(window.getComputedStyle(ein)["padding-bottom"]);
+		ein.rows = nrows;
+		ein.value = text;
+	}
 	
 	// Color cycle for fonts
 	var textColors =["#777", "#BF881B", "#9C1B20", "#1B369C"];
@@ -1112,9 +1124,12 @@
 		for(i=0; i<nlines-ne; i+=1) {
 			e = document.createElement("div");
 			e.className = "inbg";
-			e.style.top = (inputLineHeight*(ne+i))+"px";
-			e.style.backgroundColor = lineColors[(ne+i)%lineColors.length];
 			eibg.appendChild(e);
+		}
+		ne=ebg.length;
+		for(i=0; i<ne; i+=1) {
+			ebg[i].style.top = (inputLineHeight*(i))+"px";
+			ebg[i].style.backgroundColor = lineColors[i%lineColors.length];
 		}
 		eibg.style.height = (inputPadding+inputLineHeight*nlines)+"px";
 		ein.rows = nlines;
@@ -1646,6 +1661,7 @@
 		if(URLeq.length>0) { ein.value=URLeq; }
 	}
 	
+	repair();
 	inputEvent();
 	calcstart();
 -->
