@@ -893,7 +893,7 @@
 		</div>
 		<div id="incont">
 			<div id="incont2">
-				<textarea wrap="off" id="in" rows="1" onkeydown="go(event);" onkeyup="resize();">me*c^2 in keV</textarea>
+				<textarea wrap="off" id="in" rows="1" oninput="inputEvent()" onkeydown="typeKey(event);" onkeyup="releaseKey();">me*c^2 in keV</textarea>
 				<div id="hintbox">&#x21E7; + &#8629;</div>
 			</div>
 			<div id="button">
@@ -904,7 +904,7 @@
 					<g fill="#ddd" stroke="none">
 						<path d="M -.45 .15 L 0 1.1 L .45 .15"/>
 					</g>
-					<rect x="-1" y="0" width="2" height="1.4" fill-opacity="0" stroke-opacity="0" onclick="go(1);resize()"/>
+					<rect x="-1" y="0" width="2" height="1.4" fill-opacity="0" stroke-opacity="0" onclick="clickButton();releaseKey()"/>
 				</svg>
 			</div>
 		</div>
@@ -1044,35 +1044,30 @@
 	var lineColors =["#f8f8f8", "#FDF8D3", "#FDD3D8", "#D3DFFD"];
 	var curveColors =["#555", "#F0CC00", "#E00009", "#002DD6"];
 	
-	// Main callback, when Enter is pressed
-	var needResize = true, needCalc = true, needHint = false, prevLines = 1, varout;
-	function go(e) {
+	// Callbacks, when button clicked or key is pressed
+	var needResize = true, needCalc = true, needHint = false, prevLines = 0, 
+		varout, nlines, keycode;
+	function clickButton(e) {
+		needResize = false;
+		needCalc = true;
+		needHint = false;
+		return false;
+	}
+	function typeKey(e) {
 		needResize = false;
 		needCalc = false;
 		needHint = false;
 		var code;
-		if(typeof(e)=='number') { code=e; }
-		else {
-			if(typeof(e)=='undefined' && window.event) { e=window.event; }
-			code = e.keyCode || e.which;
-		}
+		if(window.event) { e=window.event; }
+		code = e.keyCode || e.which;
 		switch(code) {
-			case 1: // click on button
-				needCalc = true;
-				break;
 			case 13: // enter
-				if( e.shiftKey ) {
+				if( e.shiftKey ) { // shift+enter means start of calculation instead of newline
 					needCalc = true;
 					e.preventDefault();
 				} else {
-					n=parseInt(ein.rows) + 1;
-					ein.rows = n;
 					needResize = true;
-					var i0 = ein.selectionStart, i1 = ein.selectionEnd, l = ein.value.length;
-					var v0 = ein.value[i0], v1 = ein.value[i1];
-					if( i0==0 || i1==0 || i0==l || i1==l ||
-					    ein.value[i0-1]=="\n" || ein.value[i0]=="\n" || 
-					    ein.value[i1-1]=="\n" || ein.value[i1]=="\n") needCalc = true;
+					needCalc = true;
 					needHint = true;
 				}
 				break;
@@ -1082,28 +1077,12 @@
 		}
 		return false;
 	}
-	
-	function resize() {
-		var nl=ein.value.split("\n").length;
-		if( nl != prevLines ) needResize = true;
+	function inputEvent() {
+		if( needResize ) resize();
+	}
+	function releaseKey() {
+		if( needResize ) resize();
 		
-		if( needResize ) {
-			var ebg=eibg.getElementsByTagName("DIV")
-			var ne=ebg.length, i;
-			for(i=0; i<ne-nl; i+=1) eibg.removeChild(ebg[ne-i-1]);
-			for(i=0; i<nl-ne; i+=1) {
-				e = document.createElement("div");
-				e.className = "inbg";
-				e.style.top = (1.2*(ne+i))+"em";
-				e.style.backgroundColor = lineColors[(ne+i)%lineColors.length];
-				eibg.appendChild(e);
-			}
-			eibg.style.height = (0.4+1.2*nl)+"em";
-			ein.rows = nl;
-			ein.style.height = (1.2*nl)+"em";
-		}
-		
-		if(ein.value[ein.selectionStart-1]==";") needHint = true;
 		if(needHint) {
 			var nline = ein.value.substr(0,ein.selectionStart).match(/\n/g);
 			if(nline) nline = nline.length;
@@ -1114,9 +1093,29 @@
 			hintbox.style.visibility = "hidden";
 		}
 		
-		prevLines = nl;
-		
 		if( needCalc ) calcstart();
+	}
+	
+	// Resize the input textarea
+	function resize() {
+		nlines=ein.value.split("\n").length;
+		if( nlines != prevLines ) {
+			var ebg=eibg.getElementsByTagName("DIV")
+			var ne=ebg.length, i;
+			for(i=0; i<ne-nlines; i+=1) eibg.removeChild(ebg[ne-i-1]);
+			for(i=0; i<nlines-ne; i+=1) {
+				e = document.createElement("div");
+				e.className = "inbg";
+				e.style.top = (1.2*(ne+i))+"em";
+				e.style.backgroundColor = lineColors[(ne+i)%lineColors.length];
+				eibg.appendChild(e);
+			}
+			eibg.style.height = (0.4+1.2*nlines)+"em";
+			ein.rows = nlines;
+			ein.style.height = (1.2*nlines)+"em";
+		}
+		prevLines = nlines;
+		needResize = false;
 	}
 	
 	// Replace physical constants in a string
@@ -1158,6 +1157,7 @@
 				s=s.trim().substring(6);
 			}
 			
+			// Calculate the line expression
 			s = calcOneLine(s, sin, curveColor);
 			if( s.length==0 ) continue;
 			
@@ -1631,7 +1631,7 @@
 		exa[k].style.cursor = "pointer";
 		exa[k].onclick = function(){
 			ein.value=this.childNodes[0].innerHTML.replace(/<br>/g, "\n");
-			resize();
+			releaseKey();
 			calcstart();
 		};
 	}
@@ -1643,7 +1643,7 @@
 		if(URLeq.length>0) { ein.value=URLeq; }
 	}
 	
-	resize();
+	releaseKey();
 -->
 </script>
 </body>
