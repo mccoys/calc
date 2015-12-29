@@ -186,8 +186,8 @@
 	};
 	
 	// Functions controling the SVG plot
-	function findBestBounds(plot) { // Find the best plot limits automatically
-		var xm,xM,ym,yM,f=plot.curveEq;
+	function findBestBounds(f) { // Find the best plot limits automatically
+		var xm,xM,ym,yM;
 		var m=Math.log(1e-50),M=Math.log(1e20);
 		var i,j,k,kk,lnx,x,y,prevx,dxm,dxM,dx,dy,okm=false,okM=false, prec;
 		// The first step is to find a range containing finite values of the function
@@ -235,9 +235,11 @@
 		//alert(xm+"  "+xM);
 
 		// Adaptatively find best x range
-		plot.x_=new Array(5); plot.y_=new Array(5);
+		var adaptative = {};
+		adaptative.x_=new Array(5); adaptative.y_=new Array(5);
+		adaptative.curveEq = f;
 		// First, we define a function for adaptative refinement
-		plot.adaptative = function(x0,x1,depth,eps) {
+		adaptative.refinement = function(x0,x1,depth,eps) {
 			if(depth>=this.maxdepth) {return depth;}
 			this.dx=(x1-x0)*0.25;
 			this.x_[0]=x0; this.x_[1]=x0+this.dx; this.x_[2]=x0+2*this.dx; this.x_[3]=x0+3*this.dx; this.x_[4]=x1;
@@ -266,8 +268,8 @@
 			}
 			if(this.refine) {
 				return Math.max(
-					this.adaptative(x0,this.x_[2],depth+1,eps*2),
-					this.adaptative(this.x_[2],x1,depth+1,eps*2) );
+					this.refinement(x0,this.x_[2],depth+1,eps*2),
+					this.refinement(this.x_[2],x1,depth+1,eps*2) );
 			}
 			return depth;
 		}
@@ -276,9 +278,9 @@
 		x.linspace(xm,xM);
 		// First refinement
 		var ok=false, kmax=100, i0, i1, xlim=[xm,xM], xmax, xmM;
-		plot.maxdepth=1;
+		maxdepth=1;
 		for(k=0; k<kmax; k+=1) {
-			for(i=0; i<99; i+=1) { u[i]=plot.adaptative(x[i],x[i+1],0,1e-6); }
+			for(i=0; i<99; i+=1) { u[i]=adaptative.refinement(x[i],x[i+1],0,1e-6); }
 			i0=u.indexOf(1);
 			if(i0<0) {
 				if(!ok) { x.shrinkTowards0(0.02); }
@@ -297,16 +299,16 @@
 		// Second refinement
 		if(k<kmax-1) {
 			x.linspace(xm,xM);
-			plot.maxdepth=4; kmax=40; k=0; ok=false;
+			adaptative.maxdepth=4; kmax=40; k=0; ok=false;
 			var utot, umax, v0, v1, vtot, j0, j1, v=new Array(100);
 			while(k<kmax) {
 				k+=1;
-				if(k>kmax-5 && plot.maxdepth<9) { k=1; plot.maxdepth+=1; }
+				if(k>kmax-5 && adaptative.maxdepth<9) { k=1; adaptative.maxdepth+=1; }
 				utot=0; umax=0; v[99]=0;
 				for(i=0; i<99; i+=1) {
-					u[i]=plot.adaptative(x[i],x[i+1],0,4e-7);
+					u[i]=adaptative.refinement(x[i],x[i+1],0,4e-7);
 					if(u[i]>umax) { umax=u[i]; }
-					v[i]=(u[i]>=plot.maxdepth)?1:0;
+					v[i]=(u[i]>=adaptative.maxdepth)?1:0;
 					if(v[i]) { utot+=1; }
 				}
 				//alert(u);
@@ -324,11 +326,11 @@
 					// now j0 the second switch, j1 the penultimate switch
 					if(vtot<=3 || vtot>20) {
 						if(utot>=99) {
-							x.shrinkTowards0(Math.max(0.1,Math.min(0.9,Math.pow(2,-plot.maxdepth*(utot/100)))));
+							x.shrinkTowards0(Math.max(0.1,Math.min(0.9,Math.pow(2,-adaptative.maxdepth*(utot/100)))));
 						} else {
 							if(i0==1 && i1==98) { break; }
 							x.linspace(x[i0],x[i1+1]);
-							if(utot<50 && plot.maxdepth<9) { k=1; plot.maxdepth+=1; }
+							if(utot<50 && adaptative.maxdepth<9) { k=1; adaptative.maxdepth+=1; }
 						}
 					} else if(vtot>6) {
 						// If a bit too many switches, we remove the first and last ones
@@ -414,14 +416,20 @@
 		//alert([xm,xM,ym,yM]);
 		return [xm,xM,ym,yM];
 	}
-	SVGGElement.prototype.init = function(x1,x2,y1,y2,w,h) { // Define plot limits, scalings etc
+	SVGGElement.prototype.init = function(x1,x2,y1,y2) { // Define plot limits, scalings etc
+		// Define, or reset plot limits
+		this.x1=Math.min(this.x1,x1) | x1;
+		this.x2=Math.max(this.x2,x2) | x2;
+		this.y1=Math.min(this.y1,y1) | y1;
+		this.y2=Math.max(this.y2,y2) | y2;
+		this.s=[this.w/(this.x2-this.x1), this.h/(this.y1-this.y2)]; // scalings
+		this.t=[-this.x1*this.s[0], -this.y2*this.s[1]]; // translations
+		this.setAttribute("transform","translate("+this.t[0]+","+this.t[1]+")");
+		// Don't go further if already went through init
+		if(this.isAlreadyInitialized) return;
 		var i;
 		// Define plot positions, etc.
-		this.x1=x1; this.x2=x2; this.y1=y1; this.y2=y2;
-		this.b=[w,h]; // box size
-		this.s=[w/(x2-x1), h/(y1-y2)]; // scalings
-		this.t=[-x1*this.s[0], -y2*this.s[1]]; // translations
-		this.setAttribute("transform","translate("+this.t[0]+","+this.t[1]+")");
+		this.b=[this.w,this.h]; // box size
 		this.m=[0,0];
 		this.M=[0,0];
 		// Create axes
@@ -437,14 +445,17 @@
 		for(i=0; i<2*this.nt[0]; i+=1) { this.tickL[0].Text(" ",0,0,12,"#777",'NC').Tspan("",-5/this.s[0]).setAttribute("dy",-5); }
 		for(i=0; i<2*this.nt[1]; i+=1) { this.tickL[1].Text(" ",0,0,12,"#777",'MW').Tspan("",-5/this.s[0]).setAttribute("dy",-5); }
 		// Create curve
-		this.quickCurve=this.Polyline([0,0],"#4bb",2);
-		this.curve=this.Path("","#4bb",2);
+		this.ncurves=0;
+		this.quickCurve=[];
+		this.curve=[];
+		this.curveEq=[];
 		this.np=1000;
 		this.points=new Array(2*this.np);
 		
 		// Add replotting management after scrolling
 		this.update = function() {
-			this.curve.setAttribute("d","");
+			var z,r,i,j,t,s,n,z1,z2,k,kk,zz,al,p=0,q=0;
+			for(k=0; k<this.ncurves; k+=1) {this.curve[k].setAttribute("d",""); }
 			this.x1=-this.t[0]/this.s[0]; this.x2=this.b[0]/this.s[0]+this.x1;
 			this.y2=-this.t[1]/this.s[1]; this.y1=this.b[1]/this.s[1]+this.y2;
 			this.m[0]=2*this.x1-this.x2; this.m[1]=2*this.y1-this.y2;
@@ -453,7 +464,6 @@
 			this.ax.sets({"x1":""+this.m[0]*this.s[0], "x2":""+this.M[0]*this.s[0]});
 			this.ay.sets({"y1":""+this.m[1]*this.s[1], "y2":""+this.M[1]*this.s[1]});
 			// Update ticks and labels
-			var z,r,i,j,t,s,n,z1,z2,k,kk,zz,al,p=0,q=0;
 			al=['NC','MW']; zz=[1,1]; // tick label alignment
 			if(this.b[1]<2*this.t[1]) { al[0]='SC'; zz[1]=-1; } // reverse tick alignment if out of box
 			if(this.b[0]<2*this.t[0]) { al[1]='ME'; zz[0]=-1; } //  depending on axes position
@@ -499,47 +509,52 @@
 			this.update();
 			// Update curve with some points
 			var l=(this.M[0]-this.m[0])/this.np;
-			var i=0,y;
-			for(var x=this.m[0]; x<this.M[0]; x+=l) {
-				y=this.curveEq(x);
-				if(isFinite(y)) {
-					this.points[i*2]=x*this.s[0];
-					this.points[i*2+1]=Math.min(Math.max(y,this.m[1]),this.M[1])*this.s[1];
-					i+=1;
+			var i,y,k;
+			for(k=0; k<this.ncurves; k+=1) {
+				i=0;
+				for(var x=this.m[0]; x<this.M[0]; x+=l) {
+					y=this.curveEq[k](x);
+					if(isFinite(y)) {
+						this.points[i*2]=x*this.s[0];
+						this.points[i*2+1]=Math.min(Math.max(y,this.m[1]),this.M[1])*this.s[1];
+						i+=1;
+					}
 				}
+				this.quickCurve[k].setAttribute("points",this.points.slice(0,2*i));
 			}
-			this.quickCurve.setAttribute("points",this.points.slice(0,2*i));
 		};
-
+		
 		this.fullUpdate = function() {
 			this.update();
 			// Update curve with as many points as necessary
-			this.d="M "+(this.m[0]*this.s[0])+" 0 "; // start svg path
-			this.pathState="M";
 			this.maxdepth=5; // depth for adaptative finding of min/max
 			var l=(this.M[0]-this.m[0])/this.np; // step in x
-			var x,x0,x1,y,y0,y1,t,r,discont,dx,dy,k;
-			for(x=this.m[0]; x<this.M[0]; x+=l) { // loop over x
-				y=this.curveEq(x);
-				this.addMorePoints(x,y); // add point to svg path
-				x0=x; x1=x+l; y0=y; y1=this.curveEq(x1); // calculate next point
-				if(y1<y0) { t=x0; x0=x1; x1=t; t=y0; y0=y1; y1=t; } // sort the two points (min then max)
-				r=this.adaptativeMinMax(x,x+l,x0,y0,x1,y1,0); // find min and max of function between them
-				if(r[1]<y0) { this.addMorePoints(r[0],r[1]); } // add min if necessary
-				if(r[1]<y0 || r[3]>y1) { // if min or max encountered, check whether discontinuity.
-					if(Math.abs(r[2]-r[0])>1e-6*Math.max(Math.abs(r[2]),Math.abs(r[0]))) { // if numerical precision is ok
-						dx=(r[2]-r[0])*0.1; dy=Math.abs(r[3]-r[1])*0.3; t=0.5*(r[3]+r[1]);
-						for(k=0; k<10; k+=1) { // search for intermediate points
-							y=this.curveEq(r[0]+k*dx);
-							if(Math.abs(y-t)<dy) { break; } // if intermediate point, then not discontinuous
+			var x,x0,x1,y,y0,y1,t,r,discont,dx,dy,k,i;
+			for(k=0; k<this.ncurves; k+=1) {
+				this.d="M "+(this.m[0]*this.s[0])+" 0 "; // start svg path
+				this.pathState="M";
+				for(x=this.m[0]; x<this.M[0]; x+=l) { // loop over x
+					y=this.curveEq[k](x);
+					this.addMorePoints(x,y); // add point to svg path
+					x0=x; x1=x+l; y0=y; y1=this.curveEq[k](x1); // calculate next point
+					if(y1<y0) { t=x0; x0=x1; x1=t; t=y0; y0=y1; y1=t; } // sort the two points (min then max)
+					r=this.adaptativeMinMax(x,x+l,x0,y0,x1,y1,0,k); // find min and max of function between them
+					if(r[1]<y0) { this.addMorePoints(r[0],r[1]); } // add min if necessary
+					if(r[1]<y0 || r[3]>y1) { // if min or max encountered, check whether discontinuity.
+						if(Math.abs(r[2]-r[0])>1e-6*Math.max(Math.abs(r[2]),Math.abs(r[0]))) { // if numerical precision is ok
+							dx=(r[2]-r[0])*0.1; dy=Math.abs(r[3]-r[1])*0.3; t=0.5*(r[3]+r[1]);
+							for(i=0; i<10; i+=1) { // search for intermediate points
+								y=this.curveEq[k](r[0]+i*dx);
+								if(Math.abs(y-t)<dy) { break; } // if intermediate point, then not discontinuous
+							}
+							if(k>8) { this.pathState=""; } // discontinuity
 						}
-						if(k>8) { this.pathState=""; } // discontinuity
 					}
+					if(r[3]>y1) { this.addMorePoints(r[2],r[3]); } // add max if necessary
 				}
-				if(r[3]>y1) { this.addMorePoints(r[2],r[3]); } // add max if necessary
+				this.quickCurve[k].setAttribute("points",[0,0]);
+				this.curve[k].setAttribute("d",this.d);
 			}
-			this.quickCurve.setAttribute("points",[0,0]);
-			this.curve.setAttribute("d",this.d);
 		};
 		
 		this.addMorePoints = function(x,y) {
@@ -552,19 +567,21 @@
 			}
 		};
 		
-		this.adaptativeMinMax = function(x0,x1,xm,ym,xM,yM,depth) {
+		this.adaptativeMinMax = function(x0,x1,xm,ym,xM,yM,depth,k) {
 		// returns approximate min and max points between x0 and x1, in the form [xm,ym,xM,yM]
 			if(depth>=this.maxdepth) {return [xm,ym,xM,yM];}
-			this.yy=this.curveEq((x0+x1)*0.5);
+			this.yy=this.curveEq[k]((x0+x1)*0.5);
 			if(this.yy>yM) { xM=(x0+x1)*0.5; yM=this.yy; }
 			else if(this.yy<ym) { xm=(x0+x1)*0.5; ym=this.yy; }
 			else if(depth>1) { return [xm,ym,xM,yM]; }
-			var r1=this.adaptativeMinMax(x0,(x0+x1)*0.5,xm,ym,xM,yM,depth+1);
-			var r2=this.adaptativeMinMax((x0+x1)*0.5,x1,xm,ym,xM,yM,depth+1);
+			var r1=this.adaptativeMinMax(x0,(x0+x1)*0.5,xm,ym,xM,yM,depth+1,k);
+			var r2=this.adaptativeMinMax((x0+x1)*0.5,x1,xm,ym,xM,yM,depth+1,k);
 			if(r2[1]<r1[1]) { r1[0]=r2[0]; r1[1]=r2[1]; }
 			if(r2[3]>r1[3]) { r1[2]=r2[2]; r1[3]=r2[3]; }
 			return r1;
 		};
+		
+		this.isAlreadyInitialized = true;
 	}
 	
 	// Make SVG plot movable
@@ -1025,6 +1042,7 @@
 	// Color cycle for fonts
 	var textColors =["#777", "#BF881B", "#9C1B20", "#1B369C"];
 	var lineColors =["#f8f8f8", "#FDF8D3", "#FDD3D8", "#D3DFFD"];
+	var curveColors =["#555", "#F0CC00", "#E00009", "#002DD6"];
 	
 	// Main callback, when Enter is pressed
 	var needResize = true, needCalc = true, needHint = false, prevLines = 1, varout;
@@ -1108,7 +1126,7 @@
 	}
 
 	// Initiate calculation
-	var graph;
+	var graph = false, graphBefore = false, plot;
 	function calcstart() {
 		var sin=ein.value, sout ="", colors=[], s=[], t, k=0, i, j;
 		
@@ -1126,30 +1144,34 @@
 		sin=sin.split("\n");
 		for(j=0; j<sin.length; j+=1) {
 			
-			colors.push(textColors[j%textColors.length]);
+			colors.push( textColors [j%textColors .length ]);
+			curveColor = curveColors[j%curveColors.length ];
 			
 			s=sin[j];
 			if(s.trim().length==0) continue;
 			
 			// if begins with "graph", then graph something
+			graphBefore = graph;
 			graph=false;
 			if(s.trim().substring(0,6)=="graph ") {
 				graph=true;
 				s=s.trim().substring(6);
 			}
 			
-			s = calcOneLine(s, sin);
+			s = calcOneLine(s, sin, curveColor);
 			if( s.length==0 ) continue;
 			
 			// Output
 			if(j>0) {eout.innerHTML += "<br/>";}
 			eout.innerHTML += "<font style=\"color:"+colors[j]+"\">"+s[0]+"</font>&nbsp;&nbsp;&nbsp;<font style=\"color:#77b\">"+s[1]+"</font>";
 		}
+		
+		graph = false;
 	}
 	
 	
 	// Calculate one given input line
-	function calcOneLine(s, sin) {
+	function calcOneLine(s, sin, curveColor) {
 		var varname,
 			i,j,k,l,u,v,us,newu,newu0,s,ss,sss,tm,tp,ok,
 			gcont,g,gw,gh,rect,zoom,lx,ly,x,y,w,h,f,b,expr;
@@ -1205,35 +1227,45 @@
 		
 		// Otherwise, we make the output nice.
 		if(graph) {
-			// Create the svg container
-			gcont=document.createElement("div"); g=document.createElementNS(svgns,"svg");
-			gcont.className="graphcont";
-			gcont.appendChild(g); eout.appendChild(gcont);
-			gw=gcont.clientWidth ; g.setAttribute("width" ,gw+"px");
-			gh=gcont.clientHeight; g.setAttribute("height",gh+"px");
-			// We create "plot" which groups all elements in the graph for easy scrolling
-			plot=g.Group();
+			if(!graphBefore) {
+				// Create the svg container
+				gcont=document.createElement("div"); g=document.createElementNS(svgns,"svg");
+				gcont.className="graphcont";
+				gcont.appendChild(g); eout.appendChild(gcont);
+				gw=gcont.clientWidth ; g.setAttribute("width" ,gw+"px");
+				gh=gcont.clientHeight; g.setAttribute("height",gh+"px");
+				// We create "plot" which groups all elements in the graph for easy scrolling
+				plot=g.Group();
+				plot.w = gw;
+				plot.h = gh;
+			}
 			// Create a function that represents the curve, and find the best boundaries
-			plot.curveEq = new Function("x","return "+s[0].split("|").join("x")+";");
-			b=findBestBounds(plot);
+			var f = new Function("x","return "+s[0].split("|").join("x")+";");
+			b=findBestBounds(f);
 			if(!b) return ["Error: cannot graph the function.", ""];
-			plot.init(b[0],b[1],b[2],b[3],gw,gh); // initialize the plot
-			// Create a transparent overlay for detecting mousedown
-			rect=g.Rect(0,0,gw,gh,"transparent","transparent",0);
-			rect.onmousedown = moveBegin;
-			// Create zoom buttons
-			x=5;y=5;w=14;h=14;
-			g.ZoomButton(x,y,w,h,"+").z=[1.1,1.1];
-			g.ZoomButton(x,y+h,w,h,"-").z=[1/1.1,1/1.1];
-			x+=w*2; w*=2/3; h*=2/3;
-			g.ZoomButton(x,y,w,h,"+").z=[1,1.1];
-			g.ZoomButton(x,y+2*h,w,h,"-").z=[1,1/1.1];
-			x-=w; y+=h;
-			g.ZoomButton(x+2*w,y,w,h,"+").z=[1.1,1];
-			g.ZoomButton(x,y,w,h,"-").z=[1/1.1,1];
-			// Create range button
-			x+=3.5*w; y-=.5*h; w*=2; h*=2;
-			g.RangeButton(x,y,w,h,gcont);
+			plot.init(b[0],b[1],b[2],b[3]); // initialize the plot
+			plot.curve     .push( plot.Path    (""   ,curveColor,2) );
+			plot.quickCurve.push( plot.Polyline([0,0],curveColor,2) );
+			plot.curveEq   .push( f );
+			plot.ncurves += 1;
+			if(!graphBefore) {
+				// Create a transparent overlay for detecting mousedown
+				rect=g.Rect(0,0,gw,gh,"transparent","transparent",0);
+				rect.onmousedown = moveBegin;
+				// Create zoom buttons
+				x=5;y=5;w=14;h=14;
+				g.ZoomButton(x,y,w,h,"+").z=[1.1,1.1];
+				g.ZoomButton(x,y+h,w,h,"-").z=[1/1.1,1/1.1];
+				x+=w*2; w*=2/3; h*=2/3;
+				g.ZoomButton(x,y,w,h,"+").z=[1,1.1];
+				g.ZoomButton(x,y+2*h,w,h,"-").z=[1,1/1.1];
+				x-=w; y+=h;
+				g.ZoomButton(x+2*w,y,w,h,"+").z=[1.1,1];
+				g.ZoomButton(x,y,w,h,"-").z=[1/1.1,1];
+				// Create range button
+				x+=3.5*w; y-=.5*h; w*=2; h*=2;
+				g.RangeButton(x,y,w,h,gcont);
+			}
 			// Draw the plot
 			plot.fullUpdate();
 			return [];
@@ -1463,7 +1495,7 @@
 					// Try to evaluate the final expression in parenthesis.
 					if(graph && sss.indexOf("|")>=0) {
 						ss.push('('+sss+')');
-					} else {						
+					} else {
 						try{ss.push(""+eval(sss))}
 						catch(e) {return ["Error:","cannot evaluate "+sss];}
 					}
@@ -1598,7 +1630,7 @@
 	for(var k=0; k<exa.length; k+=1) {
 		exa[k].style.cursor = "pointer";
 		exa[k].onclick = function(){
-			ein.value=this.childNodes[0].innerHTML.replace("<br>", "\n","g");
+			ein.value=this.childNodes[0].innerHTML.replace(/<br>/g, "\n");
 			resize();
 			calcstart();
 		};
