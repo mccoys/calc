@@ -1039,6 +1039,14 @@
 	var eibg = document.getElementById("incont2");
 	var hintbox = document.getElementById("hintbox");
 	
+	// Initial trick to solve some bug with text height in some browsers
+	ein.rows = 1;
+	var height1 = parseFloat(window.getComputedStyle(ein)["height"]);
+	ein.rows = 2;
+	var height2 = parseFloat(window.getComputedStyle(ein)["height"]);
+	var inputLineHeight = height2-height1;
+	var inputPadding = parseFloat(window.getComputedStyle(ein)["padding-top"]) + parseFloat(window.getComputedStyle(ein)["padding-bottom"]);
+	
 	// Color cycle for fonts
 	var textColors =["#777", "#BF881B", "#9C1B20", "#1B369C"];
 	var lineColors =["#f8f8f8", "#FDF8D3", "#FDD3D8", "#D3DFFD"];
@@ -1078,16 +1086,16 @@
 		return false;
 	}
 	function inputEvent() {
-		if( needResize ) resize();
+		nlines=ein.value.split("\n").length;
+		if( nlines != prevLines ) resize();
+		prevLines = nlines;
 	}
 	function releaseKey() {
-		if( needResize ) resize();
-		
 		if(needHint) {
 			var nline = ein.value.substr(0,ein.selectionStart).match(/\n/g);
 			if(nline) nline = nline.length;
 			else nline = 0;
-			hintbox.style.top = (0.4+1.2/0.8*nline)+"em";
+			hintbox.style.top = (inputPadding+inputLineHeight*nline)+"px";
 			hintbox.style.visibility = "visible";
 		} else {
 			hintbox.style.visibility = "hidden";
@@ -1098,24 +1106,19 @@
 	
 	// Resize the input textarea
 	function resize() {
-		nlines=ein.value.split("\n").length;
-		if( nlines != prevLines ) {
-			var ebg=eibg.getElementsByTagName("DIV")
-			var ne=ebg.length, i;
-			for(i=0; i<ne-nlines; i+=1) eibg.removeChild(ebg[ne-i-1]);
-			for(i=0; i<nlines-ne; i+=1) {
-				e = document.createElement("div");
-				e.className = "inbg";
-				e.style.top = (1.2*(ne+i))+"em";
-				e.style.backgroundColor = lineColors[(ne+i)%lineColors.length];
-				eibg.appendChild(e);
-			}
-			eibg.style.height = (0.4+1.2*nlines)+"em";
-			ein.rows = nlines;
-			ein.style.height = (1.2*nlines)+"em";
+		var ebg=eibg.getElementsByTagName("DIV");
+		var ne=ebg.length, i;
+		for(i=0; i<ne-nlines; i+=1) eibg.removeChild(ebg[ne-i-1]);
+		for(i=0; i<nlines-ne; i+=1) {
+			e = document.createElement("div");
+			e.className = "inbg";
+			e.style.top = (inputLineHeight*(ne+i))+"px";
+			e.style.backgroundColor = lineColors[(ne+i)%lineColors.length];
+			eibg.appendChild(e);
 		}
-		prevLines = nlines;
-		needResize = false;
+		eibg.style.height = (inputPadding+inputLineHeight*nlines)+"px";
+		ein.rows = nlines;
+		ein.style.height = (inputLineHeight*nlines)+"px";
 	}
 	
 	// Replace physical constants in a string
@@ -1631,7 +1634,7 @@
 		exa[k].style.cursor = "pointer";
 		exa[k].onclick = function(){
 			ein.value=this.childNodes[0].innerHTML.replace(/<br>/g, "\n");
-			releaseKey();
+			resize();
 			calcstart();
 		};
 	}
@@ -1643,7 +1646,8 @@
 		if(URLeq.length>0) { ein.value=URLeq; }
 	}
 	
-	releaseKey();
+	inputEvent();
+	calcstart();
 -->
 </script>
 </body>
