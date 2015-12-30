@@ -14,14 +14,17 @@
 	#cont > div { width:100%; margin:0 auto; vertical-align:top; }
 	#incont2 { position:relative; width:40.5em; margin:0 auto; background-color:#f8f8f8; }
 	#in {
-		resize:none; outline:none; padding:0.2em;
+		position:absolute; resize:none; outline:none; padding:0.2em;
 		-webkit-appearance:none; -moz-appearance:none; appearance:none;
 		text-align:center; font: 1em sans-serif; color:#888;
 		box-shadow:0 0 0.3em #bbb; -webkit-box-shadow:0 0 0.3em #bbb; -moz-box-shadow:0 0 0.3em #bbb;
 		background: transparent; top:0; left:0; z-index:1000; margin:0; line-height:1.2em;
+		width:40em; border:none;
 	}
-	.inbg { left:0; background-color:#f8f8f8; height:1.2em; z-index:0; padding:0; margin:0.2em; }
-	#in, .inbg { position:absolute; width:40em; border:none;}
+	#fake1, #fake2 { position:absolute; resize:none; outline:none; appearance:none;
+		border:none; visibility:hidden; font: 1em sans-serif; line-height:1.2em; }
+	#inbg { position:absolute; left:0; top:0; z-index:0; background-color:#f8f8f8; padding:0.2em; width:100%;}
+	.inbg { float:left; height:1.2em; z-index:1; padding:0; margin:0;  width:40em; border:none;}
 	#out { padding:1em 0; margin:0; font:1.2em serif; color:#777;}
 	#outcont, #hcont { width:40em; padding:0.2em; margin:0 auto; }
 	#outcont { min-height:5em; background-color:none;}
@@ -72,13 +75,13 @@
 	
 	@media only screen and (max-width:42em){
 		#outcont, #hcont, #incont2 { width:100%; margin:0; font-size:0.9em; }
-		#in { width:100%; margin:0; }
-		.inbg { width:100%; margin:0.2em 0; }
+		#in, #fake1, #fake2 { width:100%; margin:0; padding:0.2em 0;}
+		.inbg { width:100%; }
 		#help1, #help2, #help3, #help4 { font-size:0.9em;}
 		#help1c, #help2c, #help3c, #help4c { font-size:0.9em; height:auto;}
 		#out { font-size:0.9em; }
 		#hcont { min-height:0.9em; }
-		#outcont, #in, #hcont { padding:0.2em 0; }
+		#outcont, #hcont { padding:0.2em 0; }
 		#hintbox { display:none; }
 		.t2 td:nth-child(1) { width:auto; min-width:3em; padding-right:0.9em; }
 		.t2 td:nth-child(2) { padding-left:0.9em; }
@@ -892,8 +895,11 @@
 		</div>
 		<div id="incont">
 			<div id="incont2">
-				<textarea wrap="off" id="in" rows="1" oninput="inputEvent()" onkeydown="typeKey(event);" onkeyup="releaseKey();">me*c^2 in keV</textarea>
+				<div id="inbg"></div>
 				<div id="hintbox">&#x21E7; + &#8629;</div>
+				<textarea wrap="off" id="in" rows="1" oninput="inputEvent()" onkeydown="typeKey(event);" onkeyup="releaseKey();">me*c^2 in keV</textarea>
+				<textarea wrap="off" id="fake1" rows="1"></textarea>
+				<textarea wrap="off" id="fake2" rows="2"></textarea>
 			</div>
 			<div id="button">
 				<svg width="4em" height="2.8em" viewBox="-1 0 2 1.4">
@@ -1035,8 +1041,11 @@
 	// HTML elements
 	var ein  = document.getElementById("in" );
 	var eout = document.getElementById("out");
-	var eibg = document.getElementById("incont2");
+	var eibg = document.getElementById("inbg");
+	var incont = document.getElementById("incont2");
 	var hintbox = document.getElementById("hintbox");
+	var fake1 = document.getElementById("fake1");
+	var fake2 = document.getElementById("fake2");
 	
 	// Catch window resizing event
 	window.addEventListener('resize', function() {
@@ -1047,16 +1056,10 @@
 	// Trick to fix some bug with text height in some browsers
 	var inputLineHeight, inputPadding;
 	function repair(event) {
-		var nrows = ein.rows, text = ein.value;
-		ein.style.height = "auto";
-		ein.rows = 1;
-		var height1 = parseFloat(window.getComputedStyle(ein)["height"]);
-		ein.rows = 2;
-		var height2 = parseFloat(window.getComputedStyle(ein)["height"]);
+		var height1 = parseFloat(window.getComputedStyle(fake1)["height"]);
+		var height2 = parseFloat(window.getComputedStyle(fake2)["height"]);
 		inputLineHeight = height2-height1;
 		inputPadding = parseFloat(window.getComputedStyle(ein)["padding-top"]) + parseFloat(window.getComputedStyle(ein)["padding-bottom"]);
-		ein.rows = nrows;
-		ein.value = text;
 	}
 	
 	// Color cycle for fonts
@@ -1124,14 +1127,10 @@
 		for(i=0; i<nlines-ne; i+=1) {
 			e = document.createElement("div");
 			e.className = "inbg";
+			e.style.backgroundColor = lineColors[(ne+i)%lineColors.length];
 			eibg.appendChild(e);
 		}
-		ne=ebg.length;
-		for(i=0; i<ne; i+=1) {
-			ebg[i].style.top = (inputLineHeight*(i))+"px";
-			ebg[i].style.backgroundColor = lineColors[i%lineColors.length];
-		}
-		eibg.style.height = (inputPadding+inputLineHeight*nlines)+"px";
+		incont.style.height = (inputPadding+inputLineHeight*nlines)+"px";
 		ein.rows = nlines;
 		ein.style.height = (inputLineHeight*nlines)+"px";
 	}
