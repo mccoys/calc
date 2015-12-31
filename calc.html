@@ -7,12 +7,11 @@
 <style type="text/css">
 <!--
 	
-	
 	html, body { margin:0; padding:0; height:100%; width:100%;}
 	body { background:#fff; }
 	#cont { height:100%; width:100%; display:table; text-align:center; }
 	#cont > div { width:100%; margin:0 auto; vertical-align:top; }
-	#incont2 { position:relative; width:40.5em; margin:0 auto; background-color:#f8f8f8; }
+	#incont2 { position:relative; width:40.5em; margin:0 auto; background-color:#f8f8f8; padding:0;}
 	#in {
 		position:absolute; resize:none; outline:none; padding:0.2em;
 		-webkit-appearance:none; -moz-appearance:none; appearance:none;
@@ -22,9 +21,10 @@
 		width:40em; border:none;
 	}
 	#fake1, #fake2 { position:absolute; resize:none; outline:none; appearance:none;
-		border:none; visibility:hidden; font: 1em sans-serif; line-height:1.2em; }
-	#inbg { position:absolute; left:0; top:0; z-index:0; background-color:#f8f8f8; padding:0.2em; width:100%;}
-	.inbg { float:left; height:1.2em; z-index:1; padding:0; margin:0;  width:40em; border:none;}
+		border:none; visibility:hidden; font: 1em sans-serif; line-height:1.2em;  width:0;}
+	#inbg { position:absolute; left:0; top:0; z-index:0; background-color:#f8f8f8;
+		padding:0.2em; width:40em;}
+	.inbg { float:left; height:1.2em; z-index:1; padding:0; margin:0; width:100%; border:none;}
 	#out { padding:1em 0; margin:0; font:1.2em serif; color:#777;}
 	#outcont, #hcont { width:40em; padding:0.2em; margin:0 auto; }
 	#outcont { min-height:5em; background-color:none;}
@@ -45,7 +45,7 @@
 		display:none; overflow:auto; font:1em serif; color:#777;
 	}
 	#hintbox {
-		position:absolute; left:51em; visibility:hidden;
+		position:absolute; left:51em; display:none;
 		font:0.8em sans-serif; color:#888; white-space: nowrap;
 	}
 	.t1 { width:100%; }
@@ -59,23 +59,25 @@
 	.t3a td:nth-child(1) {  font-style:italic }
 	.t3 td:nth-child(2) { width:6em; text-align:center; }
 	.t3 td:nth-child(3) { width:15em; text-align:left; font-style:italic}
-	.graphcont{ width:100%; height:20em; padding:0;
-		margin:0 auto; border:0.1em solid #dddddd; position:relative}
+	.graphcont{ position:relative; width:100%; height:20em; padding:0;
+		margin:0 auto; border:0.1em solid #dddddd; }
+	.graphcont svg { width:100%; height:100% }
 	#button { display:none; border:0; position:relative; z-index:2000; height:2.8em; margin-top:0.2em;}
-	#rangeMenu{ position:absolute; width:15em; height:5.2em; display:table;
-		top:3em; left:11em; background-color:#ddd;
+	#rangeMenu{ position:absolute;  height:5.2em; display:table;
+		top:3em; left:1em; background-color:#eee;
 		line-height:1.3em; padding:0.4em; border:0.1em solid #777; }
 	.menuItem { display:table-row; }
 	.menuItem input {
 		-webkit-appearance:none; -moz-appearance:none; appearance:none;
-		border:1px solid #ccc; background-color:#d8d8d8; color:#777;
-		width:9em; text-align:center;
+		border:1px solid #ccc; background-color:#f9f9f9; color:#777;
+		width:13em; text-align:center; margin:0.2em 0.4em;
 	}
 	.menuItem > * { display:table-cell; }
 	
 	@media only screen and (max-width:42em){
 		#outcont, #hcont, #incont2 { width:100%; margin:0; font-size:0.9em; }
-		#in, #fake1, #fake2 { width:100%; margin:0; padding:0.2em 0;}
+		#in, #inbg { width:100%; margin:0; padding:0.2em 0;}
+		#fake1, #fake2 { margin:0; padding:0.2em 0;}
 		.inbg { width:100%; }
 		#help1, #help2, #help3, #help4 { font-size:0.9em;}
 		#help1c, #help2c, #help3c, #help4c { font-size:0.9em; height:auto;}
@@ -88,7 +90,7 @@
 		.t3 td:nth-child(1) { width:auto; }
 		.t3 td:nth-child(2) { width:3em; }
 		.t3 td:nth-child(3) { width:auto; }
-		.graphcont { width:100%; border-left:0; border-right:0; }
+		.graphcont { border-left:0; border-right:0; }
 		#button { display:block; }
 	}
 -->
@@ -420,18 +422,18 @@
 	}
 	SVGGElement.prototype.init = function(x1,x2,y1,y2) { // Define plot limits, scalings etc
 		// Define, or reset plot limits
-		this.x1=Math.min(this.x1,x1) | x1;
-		this.x2=Math.max(this.x2,x2) | x2;
-		this.y1=Math.min(this.y1,y1) | y1;
-		this.y2=Math.max(this.y2,y2) | y2;
+		this.x1=Math.min(this.x1,x1) | x1 | this.x1;
+		this.x2=Math.max(this.x2,x2) | x2 | this.x2;
+		this.y1=Math.min(this.y1,y1) | y1 | this.y1;
+		this.y2=Math.max(this.y2,y2) | y2 | this.y2;
 		this.s=[this.w/(this.x2-this.x1), this.h/(this.y1-this.y2)]; // scalings
 		this.t=[-this.x1*this.s[0], -this.y2*this.s[1]]; // translations
 		this.setAttribute("transform","translate("+this.t[0]+","+this.t[1]+")");
+		this.b=[this.w,this.h]; // box size
 		// Don't go further if already went through init
 		if(this.isAlreadyInitialized) return;
+		
 		var i;
-		// Define plot positions, etc.
-		this.b=[this.w,this.h]; // box size
 		this.m=[0,0];
 		this.M=[0,0];
 		// Create axes
@@ -454,7 +456,7 @@
 		this.np=1000;
 		this.points=new Array(2*this.np);
 		
-		// Add replotting management after scrolling
+		// Add replotting management after scrolling/zooming
 		this.update = function() {
 			var z,r,i,j,t,s,n,z1,z2,k,kk,zz,al,p=0,q=0;
 			for(k=0; k<this.ncurves; k+=1) {this.curve[k].setAttribute("d",""); }
@@ -1054,12 +1056,26 @@
 	}, true);
 	
 	// Trick to fix some bug with text height in some browsers
-	var inputLineHeight, inputPadding;
+	var inputLineHeight, inputPadding, prevHeight1=0, prevWidth=0;
 	function repair(event) {
 		var height1 = parseFloat(window.getComputedStyle(fake1)["height"]);
-		var height2 = parseFloat(window.getComputedStyle(fake2)["height"]);
-		inputLineHeight = height2-height1;
-		inputPadding = parseFloat(window.getComputedStyle(ein)["padding-top"]) + parseFloat(window.getComputedStyle(ein)["padding-bottom"]);
+		if(height1!=prevHeight1) {
+			var height2 = parseFloat(window.getComputedStyle(fake2)["height"]);
+			inputLineHeight = height2-height1;
+			inputPadding = parseFloat(window.getComputedStyle(ein)["padding-top"]) + parseFloat(window.getComputedStyle(ein)["padding-bottom"]);
+			prevHeight1 = height1;
+		}
+		var width =  parseFloat(window.getComputedStyle(ein)["width"]), height;
+		if(width!=prevWidth) {
+			for(var i=0; i<allgraphs.length; i+=1) {
+				height =  parseFloat(window.getComputedStyle(allgraphs[i].parentNode)["height"]);
+				allgraphs[i].w = width;
+				allgraphs[i].h = height;
+				allgraphs[i].init();
+				allgraphs[i].quickUpdate();
+			}
+			prevWidth = width;
+		}
 	}
 	
 	// Color cycle for fonts
@@ -1111,9 +1127,9 @@
 			if(nline) nline = nline.length;
 			else nline = 0;
 			hintbox.style.top = (inputPadding+inputLineHeight*nline)+"px";
-			hintbox.style.visibility = "visible";
+			hintbox.style.display = "block";
 		} else {
-			hintbox.style.visibility = "hidden";
+			hintbox.style.display = "none";
 		}
 		
 		if( needCalc ) calcstart();
@@ -1142,12 +1158,13 @@
 	}
 
 	// Initiate calculation
-	var graph = false, graphBefore = false, plot;
+	var graph = false, graphBefore = false, plot, allgraphs=[];
 	function calcstart() {
 		var sin=ein.value, sout ="", colors=[], s=[], t, k=0, i, j;
 		
 		eout.innerHTML = "";
 		varout = [];
+		allgraphs=[];
 		
 		// wrong characters
 		var err=sin.replace(re_err,'');
@@ -1244,22 +1261,27 @@
 		
 		// Otherwise, we make the output nice.
 		if(graph) {
-			if(!graphBefore) {
-				// Create the svg container
-				gcont=document.createElement("div"); g=document.createElementNS(svgns,"svg");
-				gcont.className="graphcont";
-				gcont.appendChild(g); eout.appendChild(gcont);
-				gw=gcont.clientWidth ; g.setAttribute("width" ,gw+"px");
-				gh=gcont.clientHeight; g.setAttribute("height",gh+"px");
-				// We create "plot" which groups all elements in the graph for easy scrolling
-				plot=g.Group();
-				plot.w = gw;
-				plot.h = gh;
-			}
 			// Create a function that represents the curve, and find the best boundaries
 			var f = new Function("x","return "+s[0].split("|").join("x")+";");
 			b=findBestBounds(f);
 			if(!b) return ["Error: cannot graph the function.", ""];
+			// Create the svg container
+			if(!graphBefore) {
+				gcont=document.createElement("div");
+				g=document.createElementNS(svgns,"svg");
+				gcont.appendChild(g); eout.appendChild(gcont);
+				gcont.className="graphcont";
+				gw=gcont.clientWidth ;
+				gh=gcont.clientHeight;
+				g.setAttribute("width" ,"100%");
+				g.setAttribute("height","100%");
+				// We create "plot" which groups all elements in the graph for easy scrolling
+				plot=g.Group();
+				plot.w = gw;
+				plot.h = gh;
+				g.plot = plot;
+				allgraphs.push(plot);
+			}
 			plot.init(b[0],b[1],b[2],b[3]); // initialize the plot
 			plot.curve     .push( plot.Path    (""   ,curveColor,2) );
 			plot.quickCurve.push( plot.Polyline([0,0],curveColor,2) );
@@ -1267,7 +1289,7 @@
 			plot.ncurves += 1;
 			if(!graphBefore) {
 				// Create a transparent overlay for detecting mousedown
-				rect=g.Rect(0,0,gw,gh,"transparent","transparent",0);
+				rect=g.Rect(0,0,"100%","100%","transparent","transparent",0);
 				rect.onmousedown = moveBegin;
 				// Create zoom buttons
 				x=5;y=5;w=14;h=14;
