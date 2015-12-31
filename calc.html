@@ -422,10 +422,10 @@
 	}
 	SVGGElement.prototype.init = function(x1,x2,y1,y2) { // Define plot limits, scalings etc
 		// Define, or reset plot limits
-		this.x1=Math.min(this.x1,x1) | x1 | this.x1;
-		this.x2=Math.max(this.x2,x2) | x2 | this.x2;
-		this.y1=Math.min(this.y1,y1) | y1 | this.y1;
-		this.y2=Math.max(this.y2,y2) | y2 | this.y2;
+		if(x1) this.x1=Math.min(this.x1,x1) | x1;
+		if(x2) this.x2=Math.max(this.x2,x2) | x2;
+		if(y1) this.y1=Math.min(this.y1,y1) | y1;
+		if(y2) this.y2=Math.max(this.y2,y2) | y2;
 		this.s=[this.w/(this.x2-this.x1), this.h/(this.y1-this.y2)]; // scalings
 		this.t=[-this.x1*this.s[0], -this.y2*this.s[1]]; // translations
 		this.setAttribute("transform","translate("+this.t[0]+","+this.t[1]+")");
