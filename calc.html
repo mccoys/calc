@@ -63,7 +63,7 @@
 		margin:0 auto; border:0.1em solid #dddddd; }
 	.graphcont svg { width:100%; height:100% }
 	#button { display:none; border:0; position:relative; z-index:2000; height:2.8em; margin-top:0.2em;}
-	#rangeMenu{ position:absolute;  height:5.2em; display:table;
+	.rangeMenu{ position:absolute;  height:5.2em; display:table;
 		top:3em; left:1em; background-color:#eee;
 		line-height:1.3em; padding:0.4em; border:0.1em solid #777; }
 	.menuItem { display:table-row; }
@@ -160,33 +160,6 @@
 		t.setAttribute("dy",dy);
 		t.textContent = str;
 		return this.appendChild(t);
-	};
-	SVGElement.prototype.ZoomButton = function(x,y,w,h,type) {
- 		var zoom=this.Group();
- 		zoom.Rect(x,y,w,h,"#eee","#ccc",1);
- 		zoom.plot=this.firstChild;
- 		zoom.onmousedown=zoomBegin;
- 		zoom.setAttribute("cursor","pointer");
- 		if(type=="+") {zoom.Line(x+w/2,y+h/5,x+w/2,y+4*h/5,"#777",1.5);}
- 		zoom.Line(x+w/5,y+h/2,x+4*w/5,y+h/2,"#777",1.5);
-  		return zoom;
- 	};
-	SVGElement.prototype.RangeButton = function(x,y,w,h,gcont) {
-		var button=this.Group();
- 		button.cont=gcont;
-		button.onmousedown=chooseRange;
-		button.setAttribute("cursor","pointer");
-		button.Rect(x,y,w,h,"#eee","#ccc",1);
-		button.Line(x+w,y,x,y+h,"#777",1.);
-		var lineLength=Math.sqrt(w*w+h*h), lineAngle=Math.atan2(h,w);
-		var arrowLength = 0.2*lineLength, arrowAngle = 0.4;
-		var u0 = arrowLength*Math.cos(lineAngle-arrowAngle), v0 = arrowLength*Math.sin(lineAngle-arrowAngle);
-		var u1 = arrowLength*Math.cos(lineAngle+arrowAngle), v1 = arrowLength*Math.sin(lineAngle+arrowAngle);
-		button.Line(x+w,y,x+w-u0,y+v0,"#777",1.);
-		button.Line(x+w,y,x+w-u1,y+v1,"#777",1.);
-		button.Line(x,y+h,x+u0,y+h-v0,"#777",1.);
-		button.Line(x,y+h,x+u1,y+h-v1,"#777",1.);
-		return button;
 	};
 	
 	// Functions controling the SVG plot
@@ -420,32 +393,33 @@
 		//alert([xm,xM,ym,yM]);
 		return [xm,xM,ym,yM];
 	}
-	SVGGElement.prototype.init = function(x1,x2,y1,y2) { // Define plot limits, scalings etc
-		// Define, or reset plot limits
-		if(x1) this.x1=Math.min(this.x1,x1) | x1;
-		if(x2) this.x2=Math.max(this.x2,x2) | x2;
-		if(y1) this.y1=Math.min(this.y1,y1) | y1;
-		if(y2) this.y2=Math.max(this.y2,y2) | y2;
-		this.s=[this.w/(this.x2-this.x1), this.h/(this.y1-this.y2)]; // scalings
-		this.t=[-this.x1*this.s[0], -this.y2*this.s[1]]; // translations
-		this.setAttribute("transform","translate("+this.t[0]+","+this.t[1]+")");
-		this.b=[this.w,this.h]; // box size
-		// Don't go further if already went through init
-		if(this.isAlreadyInitialized) return;
-		
+	// Main class
+	function Plot(container, bounds) {
 		var i;
+		var gcont=document.createElement("div");
+		var g=document.createElementNS(svgns,"svg");
+		gcont.appendChild(g);
+		container.appendChild(gcont);
+		gcont.className="graphcont";
+		g.setAttribute("width" ,"100%");
+		g.setAttribute("height","100%");
+		this.plot = g.Group();
+		this.w = gcont.clientWidth;
+		this.h = gcont.clientHeight;
+		this.resize(bounds[0],bounds[1],bounds[2],bounds[3]);
+		// min and max zone to display things (even out of the viewport)
 		this.m=[0,0];
 		this.M=[0,0];
 		// Create axes
-		this.ax=this.Line(0,0,0,0,"#777",1);
-		this.ay=this.Line(0,0,0,0,"#777",1);
+		this.ax=this.plot.Line(0,0,0,0,"#777",1);
+		this.ay=this.plot.Line(0,0,0,0,"#777",1);
 		// Create ticks
-		this.ticks=[this.Group(), this.Group()]; // x and y
+		this.ticks=[this.plot.Group(), this.plot.Group()]; // x and y
 		this.nt=[22, 16]; // approximate number of ticks
 		for(i=0; i<2*this.nt[0]; i+=1) { this.ticks[0].Line(0,0,0,0,"#777",0); }
 		for(i=0; i<2*this.nt[1]; i+=1) { this.ticks[1].Line(0,0,0,0,"#777",0); }
 		// Create tick labels with an optional "tspan" for powers.
-		this.tickL=[this.Group(), this.Group()];
+		this.tickL=[this.plot.Group(), this.plot.Group()];
 		for(i=0; i<2*this.nt[0]; i+=1) { this.tickL[0].Text(" ",0,0,12,"#777",'NC').Tspan("",-5/this.s[0]).setAttribute("dy",-5); }
 		for(i=0; i<2*this.nt[1]; i+=1) { this.tickL[1].Text(" ",0,0,12,"#777",'MW').Tspan("",-5/this.s[0]).setAttribute("dy",-5); }
 		// Create curve
@@ -456,144 +430,259 @@
 		this.np=1000;
 		this.points=new Array(2*this.np);
 		
-		// Add replotting management after scrolling/zooming
-		this.update = function() {
-			var z,r,i,j,t,s,n,z1,z2,k,kk,zz,al,p=0,q=0;
-			for(k=0; k<this.ncurves; k+=1) {this.curve[k].setAttribute("d",""); }
-			this.x1=-this.t[0]/this.s[0]; this.x2=this.b[0]/this.s[0]+this.x1;
-			this.y2=-this.t[1]/this.s[1]; this.y1=this.b[1]/this.s[1]+this.y2;
-			this.m[0]=2*this.x1-this.x2; this.m[1]=2*this.y1-this.y2;
-			this.M[0]=2*this.x2-this.x1; this.M[1]=2*this.y2-this.y1;
-			// Update axes
-			this.ax.sets({"x1":""+this.m[0]*this.s[0], "x2":""+this.M[0]*this.s[0]});
-			this.ay.sets({"y1":""+this.m[1]*this.s[1], "y2":""+this.M[1]*this.s[1]});
-			// Update ticks and labels
-			al=['NC','MW']; zz=[1,1]; // tick label alignment
-			if(this.b[1]<2*this.t[1]) { al[0]='SC'; zz[1]=-1; } // reverse tick alignment if out of box
-			if(this.b[0]<2*this.t[0]) { al[1]='ME'; zz[0]=-1; } //  depending on axes position
-			for(k=0; k<2; k+=1) { // x then y
-				kk=(k+1)%2;
-				z1=[ (this.x2-this.x1)*0.005,-(this.y2-this.y1)*0.01]; // small offsets for ticks
-				z2=[-(this.x2-this.x1)*0.005, (this.y2-this.y1)*0.01];
-				t = this.ticks[k].childNodes; l=this.tickL[k].childNodes; // get all ticks
-				p=(this.M[k]-this.m[k])/this.nt[k]; r=Math.pow(10.,ndec(p));
-				q=Math.floor(Math.sqrt(1.5*(p/r-1))); q=(1+q*q)*r; // now q is tick separation
-				p=Math.max(ndec(this.m[k]),ndec(this.M[k]))-1; r=Math.pow(10.,p); // p is the power
-				i=0;
-				for(z=this.m[k]-this.m[k]%q;z<this.M[k];z+=q) { // for each tick position
-					z1[k]=z; z2[k]=z;
-					t[i].sets({"x1":""+z1[0]*this.s[0],"x2":""+z2[0]*this.s[0],"y1":""+z1[1]*this.s[1],"y2":""+z2[1]*this.s[1],
-						"stroke-width":z?1:0});
-					s=""; n="";
-					if(p*p>9) { // if too long number, display with power of 10
-						s=tickformat(z/r,q/r);
-						switch(s) {
-							case "0": s=""; break;
-							case "1": s="10"; n=""+p; break;
-							case "-1": s="-10"; n=""+p; break;
-							default: s+="·10";""; n=""+p;
-						}
-					} else { 
-						s=tickformat(z,q);
-						if(s=="0") { s=""; }
+		// Create a transparent overlay for detecting mousedown
+		var rect=g.Rect(0,0,"100%","100%","transparent","transparent",0);
+		rect.onmousedown = moveBegin;
+		rect.plot = this;
+		// Create zoom buttons
+		var x=5,y=5,w=14,h=14;
+		this.ZoomButton(g,x,y    ,w,h,"+").z=[1.1,1.1];
+		this.ZoomButton(g,x,y+h  ,w,h,"-").z=[1/1.1,1/1.1];
+		x+=w*2; w*=2/3; h*=2/3;
+		this.ZoomButton(g,x,y    ,w,h,"+").z=[1,1.1];
+		this.ZoomButton(g,x,y+2*h,w,h,"-").z=[1,1/1.1];
+		x-=w; y+=h;
+		this.ZoomButton(g,x+2*w,y,w,h,"+").z=[1.1,1];
+		this.ZoomButton(g,x    ,y,w,h,"-").z=[1/1.1,1];
+		// Create range button
+		x+=3.5*w; y-=.5*h; w*=2; h*=2;
+		var button=g.Group();
+		button.svg=g;
+		button.cont=gcont;
+		button.plot=this;
+		button.onmousedown=chooseRange;
+		button.setAttribute("cursor","pointer");
+		button.Rect(x,y,w,h,"#eee","#ccc",1);
+		button.Line(x+w,y,x,y+h,"#777",1.);
+		var lineLength=Math.sqrt(w*w+h*h), lineAngle=Math.atan2(h,w);
+		var arrowLength = 0.2*lineLength, arrowAngle = 0.4;
+		var u0 = arrowLength*Math.cos(lineAngle-arrowAngle), v0 = arrowLength*Math.sin(lineAngle-arrowAngle);
+		var u1 = arrowLength*Math.cos(lineAngle+arrowAngle), v1 = arrowLength*Math.sin(lineAngle+arrowAngle);
+		button.Line(x+w,y,x+w-u0,y+v0,"#777",1.);
+		button.Line(x+w,y,x+w-u1,y+v1,"#777",1.);
+		button.Line(x,y+h,x+u0,y+h-v0,"#777",1.);
+		button.Line(x,y+h,x+u1,y+h-v1,"#777",1.);
+	}
+	// resizer
+	Plot.prototype.resize = function(x1,x2,y1,y2) {
+		// Define, or reset plot limits
+		if(x1) this.x1=Math.min(this.x1,x1) | x1;
+		if(x2) this.x2=Math.max(this.x2,x2) | x2;
+		if(y1) this.y1=Math.min(this.y1,y1) | y1;
+		if(y2) this.y2=Math.max(this.y2,y2) | y2;
+		this.s=[this.w/(this.x2-this.x1), this.h/(this.y1-this.y2)]; // scalings
+		this.t=[-this.x1*this.s[0], -this.y2*this.s[1]]; // translations
+		this.plot.setAttribute("transform","translate("+this.t[0]+","+this.t[1]+")");
+		this.b=[this.w,this.h]; // box size
+	};
+	// Add a curve
+	Plot.prototype.addCurve = function(f,color) {
+		this.curve     .push( this.plot.Path    (""   ,color,2) );
+		this.quickCurve.push( this.plot.Polyline([0,0],color,2) );
+		this.curveEq   .push( f );
+		this.ncurves += 1;
+	};
+	// replotting manager after scrolling/zooming
+	Plot.prototype.update = function() {
+		var z,r,i,j,t,s,n,z1,z2,k,kk,zz,al,p=0,q=0;
+		for(k=0; k<this.ncurves; k+=1) {this.curve[k].setAttribute("d",""); }
+		this.x1=-this.t[0]/this.s[0]; this.x2=this.b[0]/this.s[0]+this.x1;
+		this.y2=-this.t[1]/this.s[1]; this.y1=this.b[1]/this.s[1]+this.y2;
+		this.m[0]=2*this.x1-this.x2; this.m[1]=2*this.y1-this.y2;
+		this.M[0]=2*this.x2-this.x1; this.M[1]=2*this.y2-this.y1;
+		// Update axes
+		this.ax.sets({"x1":""+this.m[0]*this.s[0], "x2":""+this.M[0]*this.s[0]});
+		this.ay.sets({"y1":""+this.m[1]*this.s[1], "y2":""+this.M[1]*this.s[1]});
+		// Update ticks and labels
+		al=['NC','MW']; zz=[1,1]; // tick label alignment
+		if(this.b[1]<2*this.t[1]) { al[0]='SC'; zz[1]=-1; } // reverse tick alignment if out of box
+		if(this.b[0]<2*this.t[0]) { al[1]='ME'; zz[0]=-1; } //  depending on axes position
+		for(k=0; k<2; k+=1) { // x then y
+			kk=(k+1)%2;
+			z1=[ (this.x2-this.x1)*0.005,-(this.y2-this.y1)*0.01]; // small offsets for ticks
+			z2=[-(this.x2-this.x1)*0.005, (this.y2-this.y1)*0.01];
+			t = this.ticks[k].childNodes; l=this.tickL[k].childNodes; // get all ticks
+			p=(this.M[k]-this.m[k])/this.nt[k]; r=Math.pow(10.,ndec(p));
+			q=Math.floor(Math.sqrt(1.5*(p/r-1))); q=(1+q*q)*r; // now q is tick separation
+			p=Math.max(ndec(this.m[k]),ndec(this.M[k]))-1; r=Math.pow(10.,p); // p is the power
+			i=0;
+			for(z=this.m[k]-this.m[k]%q;z<this.M[k];z+=q) { // for each tick position
+				z1[k]=z; z2[k]=z;
+				t[i].sets({"x1":""+z1[0]*this.s[0],"x2":""+z2[0]*this.s[0],"y1":""+z1[1]*this.s[1],"y2":""+z2[1]*this.s[1],
+					"stroke-width":z?1:0});
+				s=""; n="";
+				if(p*p>9) { // if too long number, display with power of 10
+					s=tickformat(z/r,q/r);
+					switch(s) {
+						case "0": s=""; break;
+						case "1": s="10"; n=""+p; break;
+						case "-1": s="-10"; n=""+p; break;
+						default: s+="·10";""; n=""+p;
 					}
-					l[i].childNodes[0].textContent=s;
-					l[i].childNodes[1].textContent=n;
-					l[i].move((kk+2*zz[0]*k)*z1[0]*this.s[0],-(-zz[1]*2.5*kk-k)*z1[1]*this.s[1],al[k]);
+				} else { 
+					s=tickformat(z,q);
+					if(s=="0") { s=""; }
+				}
+				l[i].childNodes[0].textContent=s;
+				l[i].childNodes[1].textContent=n;
+				l[i].move((kk+2*zz[0]*k)*z1[0]*this.s[0],-(-zz[1]*2.5*kk-k)*z1[1]*this.s[1],al[k]);
+				i+=1;
+			}
+			for(j=i; j<2*this.nt[k]; j+=1) { //hide unused ticks
+				t[j].setAttribute("stroke-width",0);
+				l[j].childNodes[0].textContent=""; l[j].childNodes[1].textContent="";
+			}
+		}
+	};
+	// Replotting while scrolling/zooming
+	Plot.prototype.quickUpdate = function() {
+		this.update();
+		// Update curve with some points
+		var l=(this.M[0]-this.m[0])/this.np;
+		var i,y,k;
+		for(k=0; k<this.ncurves; k+=1) {
+			i=0;
+			for(var x=this.m[0]; x<this.M[0]; x+=l) {
+				y=this.curveEq[k](x);
+				if(isFinite(y)) {
+					this.points[i*2]=x*this.s[0];
+					this.points[i*2+1]=Math.min(Math.max(y,this.m[1]),this.M[1])*this.s[1];
 					i+=1;
 				}
-				for(j=i; j<2*this.nt[k]; j+=1) { //hide unused ticks
-					t[j].setAttribute("stroke-width",0);
-					l[j].childNodes[0].textContent=""; l[j].childNodes[1].textContent="";
-				}
 			}
-		};
-		
-		this.quickUpdate = function() {
-			this.update();
-			// Update curve with some points
-			var l=(this.M[0]-this.m[0])/this.np;
-			var i,y,k;
-			for(k=0; k<this.ncurves; k+=1) {
-				i=0;
-				for(var x=this.m[0]; x<this.M[0]; x+=l) {
-					y=this.curveEq[k](x);
-					if(isFinite(y)) {
-						this.points[i*2]=x*this.s[0];
-						this.points[i*2+1]=Math.min(Math.max(y,this.m[1]),this.M[1])*this.s[1];
-						i+=1;
-					}
-				}
-				this.quickCurve[k].setAttribute("points",this.points.slice(0,2*i));
-			}
-		};
-		
-		this.fullUpdate = function() {
-			this.update();
-			// Update curve with as many points as necessary
-			this.maxdepth=5; // depth for adaptative finding of min/max
-			var l=(this.M[0]-this.m[0])/this.np; // step in x
-			var x,x0,x1,y,y0,y1,t,r,discont,dx,dy,k,i;
-			for(k=0; k<this.ncurves; k+=1) {
-				this.d="M "+(this.m[0]*this.s[0])+" 0 "; // start svg path
-				this.pathState="M";
-				for(x=this.m[0]; x<this.M[0]; x+=l) { // loop over x
-					y=this.curveEq[k](x);
-					this.addMorePoints(x,y); // add point to svg path
-					x0=x; x1=x+l; y0=y; y1=this.curveEq[k](x1); // calculate next point
-					if(y1<y0) { t=x0; x0=x1; x1=t; t=y0; y0=y1; y1=t; } // sort the two points (min then max)
-					r=this.adaptativeMinMax(x,x+l,x0,y0,x1,y1,0,k); // find min and max of function between them
-					if(r[1]<y0) { this.addMorePoints(r[0],r[1]); } // add min if necessary
-					if(r[1]<y0 || r[3]>y1) { // if min or max encountered, check whether discontinuity.
-						if(Math.abs(r[2]-r[0])>1e-6*Math.max(Math.abs(r[2]),Math.abs(r[0]))) { // if numerical precision is ok
-							dx=(r[2]-r[0])*0.1; dy=Math.abs(r[3]-r[1])*0.3; t=0.5*(r[3]+r[1]);
-							for(i=0; i<10; i+=1) { // search for intermediate points
-								y=this.curveEq[k](r[0]+i*dx);
-								if(Math.abs(y-t)<dy) { break; } // if intermediate point, then not discontinuous
-							}
-							if(k>8) { this.pathState=""; } // discontinuity
+			this.quickCurve[k].setAttribute("points",this.points.slice(0,2*i));
+		}
+	};
+	// Replotting AFTER scrolling/zooming
+	Plot.prototype.fullUpdate = function() {
+		this.update();
+		// Update curve with as many points as necessary
+		this.maxdepth=5; // depth for adaptative finding of min/max
+		var l=(this.M[0]-this.m[0])/this.np; // step in x
+		var x,x0,x1,y,y0,y1,t,r,discont,dx,dy,k,i;
+		for(k=0; k<this.ncurves; k+=1) {
+			this.d="M "+(this.m[0]*this.s[0])+" 0 "; // start svg path
+			this.pathState="M";
+			for(x=this.m[0]; x<this.M[0]; x+=l) { // loop over x
+				y=this.curveEq[k](x);
+				this.addMorePoints(x,y); // add point to svg path
+				x0=x; x1=x+l; y0=y; y1=this.curveEq[k](x1); // calculate next point
+				if(y1<y0) { t=x0; x0=x1; x1=t; t=y0; y0=y1; y1=t; } // sort the two points (min then max)
+				r=this.adaptativeMinMax(x,x+l,x0,y0,x1,y1,0,k); // find min and max of function between them
+				if(r[1]<y0) { this.addMorePoints(r[0],r[1]); } // add min if necessary
+				if(r[1]<y0 || r[3]>y1) { // if min or max encountered, check whether discontinuity.
+					if(Math.abs(r[2]-r[0])>1e-6*Math.max(Math.abs(r[2]),Math.abs(r[0]))) { // if numerical precision is ok
+						dx=(r[2]-r[0])*0.1; dy=Math.abs(r[3]-r[1])*0.3; t=0.5*(r[3]+r[1]);
+						for(i=0; i<10; i+=1) { // search for intermediate points
+							y=this.curveEq[k](r[0]+i*dx);
+							if(Math.abs(y-t)<dy) { break; } // if intermediate point, then not discontinuous
 						}
+						if(k>8) { this.pathState=""; } // discontinuity
 					}
-					if(r[3]>y1) { this.addMorePoints(r[2],r[3]); } // add max if necessary
 				}
-				this.quickCurve[k].setAttribute("points",[0,0]);
-				this.curve[k].setAttribute("d",this.d);
+				if(r[3]>y1) { this.addMorePoints(r[2],r[3]); } // add max if necessary
 			}
-		};
-		
-		this.addMorePoints = function(x,y) {
-			if(isFinite(y)) {
-				if(this.pathState=="") { this.d+="M "; this.pathState="M"; }
-				else if(this.pathState=="M") { this.d+="L "; this.pathState="L"; }
-				this.d+=(x*this.s[0])+" "+(Math.min(Math.max(y,this.m[1]),this.M[1])*this.s[1])+" ";
-			} else {
-				this.pathState="";
-			}
-		};
-		
-		this.adaptativeMinMax = function(x0,x1,xm,ym,xM,yM,depth,k) {
-		// returns approximate min and max points between x0 and x1, in the form [xm,ym,xM,yM]
-			if(depth>=this.maxdepth) {return [xm,ym,xM,yM];}
-			this.yy=this.curveEq[k]((x0+x1)*0.5);
-			if(this.yy>yM) { xM=(x0+x1)*0.5; yM=this.yy; }
-			else if(this.yy<ym) { xm=(x0+x1)*0.5; ym=this.yy; }
-			else if(depth>1) { return [xm,ym,xM,yM]; }
-			var r1=this.adaptativeMinMax(x0,(x0+x1)*0.5,xm,ym,xM,yM,depth+1,k);
-			var r2=this.adaptativeMinMax((x0+x1)*0.5,x1,xm,ym,xM,yM,depth+1,k);
-			if(r2[1]<r1[1]) { r1[0]=r2[0]; r1[1]=r2[1]; }
-			if(r2[3]>r1[3]) { r1[2]=r2[2]; r1[3]=r2[3]; }
-			return r1;
-		};
-		
-		this.isAlreadyInitialized = true;
+			this.quickCurve[k].setAttribute("points",[0,0]);
+			this.curve[k].setAttribute("d",this.d);
+		}
+	};
+	Plot.prototype.addMorePoints = function(x,y) {
+		if(isFinite(y)) {
+			if(this.pathState=="") { this.d+="M "; this.pathState="M"; }
+			else if(this.pathState=="M") { this.d+="L "; this.pathState="L"; }
+			this.d+=(x*this.s[0])+" "+(Math.min(Math.max(y,this.m[1]),this.M[1])*this.s[1])+" ";
+		} else {
+			this.pathState="";
+		}
+	};
+	// returns approximate min and max points between x0 and x1, in the form [xm,ym,xM,yM]
+	Plot.prototype.adaptativeMinMax = function(x0,x1,xm,ym,xM,yM,depth,k) {
+		if(depth>=this.maxdepth) {return [xm,ym,xM,yM];}
+		this.yy=this.curveEq[k]((x0+x1)*0.5);
+		if(this.yy>yM) { xM=(x0+x1)*0.5; yM=this.yy; }
+		else if(this.yy<ym) { xm=(x0+x1)*0.5; ym=this.yy; }
+		else if(depth>1) { return [xm,ym,xM,yM]; }
+		var r1=this.adaptativeMinMax(x0,(x0+x1)*0.5,xm,ym,xM,yM,depth+1,k);
+		var r2=this.adaptativeMinMax((x0+x1)*0.5,x1,xm,ym,xM,yM,depth+1,k);
+		if(r2[1]<r1[1]) { r1[0]=r2[0]; r1[1]=r2[1]; }
+		if(r2[3]>r1[3]) { r1[2]=r2[2]; r1[3]=r2[3]; }
+		return r1;
+	};
+	// Create one zoom button
+	Plot.prototype.ZoomButton = function(g,x,y,w,h,type) {
+		var zoom=g.Group();
+		zoom.Rect(x,y,w,h,"#eee","#ccc",1);
+		zoom.plot=this;
+		zoom.onmousedown=zoomBegin;
+		zoom.setAttribute("cursor","pointer");
+		if(type=="+") {zoom.Line(x+w/2,y+h/5,x+w/2,y+4*h/5,"#777",1.5);}
+		zoom.Line(x+w/5,y+h/2,x+4*w/5,y+h/2,"#777",1.5);
+ 		return zoom;
+	};
+
+	// Display menu for changing plot range
+	function chooseRange(evt) {
+		var gbutton = evt.target.parentNode
+		var plot=gbutton.plot;
+		var cont=gbutton.cont;
+		var svg =gbutton.svg;
+		var w = svg.getAttribute("width"), h = svg.getAttribute("height");
+		// Create a gray overlay
+		var rect=svg.Rect(0,0,w,h,"rgba(0,0,0,0.2)","transparent",0);
+		// Create the menu
+		var menu=document.createElement("div");
+		menu.className = "rangeMenu";
+		// Create each item of the plot-range menu
+		function createTextItem(menu, title, value) {
+			var item = document.createElement("div");
+			item.className = "menuItem";
+			var name = document.createElement("div");
+			name.innerHTML = title;
+			item.appendChild(name);
+			var input = document.createElement("input");
+			input.type = "text";
+			input.value = value;
+			input.id = title;
+			item.appendChild(input);
+			menu.appendChild(item);
+			return input;
+		}
+		plot.exmin = createTextItem(menu, "x-min", ""+plot.x1);
+		plot.exmax = createTextItem(menu, "x-max", ""+plot.x2);
+		plot.eymin = createTextItem(menu, "y-min", ""+plot.y1);
+		plot.eymax = createTextItem(menu, "y-max", ""+plot.y2);
+		cont.appendChild(menu);
+		// Make overlay clickable to quit the menu
+		rect.plot=plot;
+		rect.menu=menu;
+		rect.onclick=setRange;
 	}
+	// Change the plot range and remove menu
+	function setRange(evt) {
+		var plot = evt.target.plot;
+		// Apply the range
+		var x1=plot.exmin.value;
+		var x2=plot.exmax.value;
+		var y1=plot.eymin.value;
+		var y2=plot.eymax.value;
+		plot.s[0] =  plot.b[0] / (x2-x1);
+		plot.s[1] =  plot.b[1] / (y1-y2);
+		plot.t[0] = -plot.s[0]*x1;
+		plot.t[1] = -plot.s[1]*y2;
+		plot.plot.setAttribute("transform","translate("+plot.t[0]+","+plot.t[1]+")");
+		plot.fullUpdate();
+		// remove the menu
+		evt.target.menu.parentNode.removeChild(evt.target.menu);
+		// remove the gray overlay
+		evt.target.parentNode.removeChild(evt.target);
+	};
 	
-	// Make SVG plot movable
+	// Make SVG plots movable
 	var moving=undefined, movu, movx, mov;
 	function moveBegin(evt) {
 		evt.preventDefault(); // prevent the default svg dragging
 		document.onmouseup=moveEnd;
-		moving = evt.target.parentNode.firstChild; // e is plot
+		moving = evt.target.plot;
 		moving.c10=evt.clientX; moving.c20=evt.clientY; // initial coordinates
 		moving.quickUpdate();
 		evt.target.addEventListener("mousemove", moveContinue, false);
@@ -602,7 +691,7 @@
 		if(!moving) return;
 		movx = [evt.clientX-moving.c10+moving.t[0], evt.clientY-moving.c20+moving.t[1]];
 		// move the plot
-		moving.setAttribute("transform","translate("+movx[0]+","+movx[1]+")");
+		moving.plot.setAttribute("transform","translate("+movx[0]+","+movx[1]+")");
 		// make sure that the ticks don't move further than the plot box
 		movu = 2*movx[0]/moving.b[0]-1; movu=movu*(Math.min(1,1/Math.abs(movu))-1)*moving.b[0]/2;
 		moving.ticks[1].setAttribute("transform","translate("+movu+",0)");
@@ -615,30 +704,30 @@
 		document.onmouseup=null;
 		if(!moving) return;
 		mov=moving; moving=undefined;
-		var t=mov.getAttribute("transform").match(/-?[0-9.]+[eE\+\-0-9]*/g);
+		var t=mov.plot.getAttribute("transform").match(/-?[0-9.]+[eE\+\-0-9]*/g);
 		mov.t[0]=parseFloat(t[0]); mov.t[1]=parseFloat(t[1]);
 		mov.fullUpdate();
 		mov=undefined;
 	}
 	
-	// Make SVG plot zoomable
-	var zooming=undefined, zoomtimer=undefined, zplot=undefined, zoom;
+	// Make SVG plots zoomable
+	var zooming=undefined, zoomtimer=undefined, zbutton=undefined, zoom;
 	function zoomBegin(evt) {
 		evt.preventDefault(); // prevent the default svg dragging
 		document.onmouseup=zoomEnd;
-		zooming=evt.target.parentNode;
-		zplot=zooming.plot;
-		zooming.firstChild.setAttribute("fill","#ddd");
+		zbutton=evt.target.parentNode;
+		zooming=zbutton.plot;
+		zbutton.firstChild.setAttribute("fill","#ddd");
 		setTimeout(zoomContinue, 50);
 	}
 	function zoomContinue() {
 		if(!zooming) return; 
-		zplot.s[0]*=zooming.z[0];
-		zplot.s[1]*=zooming.z[1];
-		zplot.t[0]=zplot.b[0]/2-zooming.z[0]*(zplot.b[0]/2-zplot.t[0]);
-		zplot.t[1]=zplot.b[1]/2-zooming.z[1]*(zplot.b[1]/2-zplot.t[1]);
-		zplot.setAttribute("transform","translate("+zplot.t[0]+","+zplot.t[1]+")");
-		zplot.quickUpdate();
+		zooming.s[0]*=zbutton.z[0];
+		zooming.s[1]*=zbutton.z[1];
+		zooming.t[0]=zooming.b[0]/2-zbutton.z[0]*(zooming.b[0]/2-zooming.t[0]);
+		zooming.t[1]=zooming.b[1]/2-zbutton.z[1]*(zooming.b[1]/2-zooming.t[1]);
+		zooming.plot.setAttribute("transform","translate("+zooming.t[0]+","+zooming.t[1]+")");
+		zooming.quickUpdate();
 		setTimeout(zoomContinue, 50);
 	}
 	function zoomEnd(evt) {
@@ -646,64 +735,9 @@
 		document.onmouseup=null;
 		if(!zooming) return;
 		zoom=zooming; zooming=undefined;
-		zoom.firstChild.setAttribute("fill","#eee");
-		zplot.fullUpdate();
+		zbutton.firstChild.setAttribute("fill","#eee");
+		zoom.fullUpdate();
 		zoom=undefined; zplot=undefined;
-	}
-	
-	// Display menu for changing plot range
-	function chooseRange(evt) {
-		var cont=evt.target.parentNode.cont;
-		var svg=cont.firstChild;
-		var plot=svg.firstChild;
-		var w = svg.getAttribute("width"), h = svg.getAttribute("height");  
-		// Create a gray overlay
-		var rect=svg.Rect(0,0,w,h,"rgba(0,0,0,0.2)","transparent",0);
-		// Create the menu
-		var menu=document.createElement("div");
-		menu.id = "rangeMenu";
-		createTextItem(menu, "x-min", ""+plot.x1)
-		createTextItem(menu, "x-max", ""+plot.x2)
-		createTextItem(menu, "y-min", ""+plot.y1)
-		createTextItem(menu, "y-max", ""+plot.y2)
-		cont.appendChild(menu);
-		// Make overlay clickable to quit the menu
-		rect.onclick=setRange;
-	}
-	// Create each item of the plot-range menu
-	function createTextItem(menu, title, value) {
-		var item = document.createElement("div");
-		item.className = "menuItem";
-		var name = document.createElement("div");
-		name.innerHTML = title;
-		item.appendChild(name);
-		var input = document.createElement("input");
-		input.type = "text";
-		input.value = value;
-		input.id = title;
-		item.appendChild(input);
-		menu.appendChild(item);
-	}
-	// Change the plot range and remove menu
-	function setRange(evt) {
-		var svg = evt.target.parentNode;
-		var plot = svg.firstChild;
-		// Apply the range
-		var x1=document.getElementById("x-min").value;
-		var x2=document.getElementById("x-max").value;
-		var y1=document.getElementById("y-min").value;
-		var y2=document.getElementById("y-max").value;
-		plot.s[0] = plot.b[0] / (x2-x1);
-		plot.t[0] = -plot.s[0]*x1;
-		plot.s[1] = plot.b[1] / (y1-y2);
-		plot.t[1] = -plot.s[1]*y2;
-		plot.setAttribute("transform","translate("+plot.t[0]+","+plot.t[1]+")");
-		plot.fullUpdate();
-		// remove the menu
-		var menu = document.getElementById("rangeMenu");
-		menu.parentNode.removeChild(menu);
-		// remove the gray overlay
-		svg.removeChild(evt.target);
 	}
 	
 	// number of decimal places
@@ -1068,10 +1102,10 @@
 		var width =  parseFloat(window.getComputedStyle(ein)["width"]), height;
 		if(width!=prevWidth) {
 			for(var i=0; i<allgraphs.length; i+=1) {
-				height =  parseFloat(window.getComputedStyle(allgraphs[i].parentNode)["height"]);
+				height =  parseFloat(window.getComputedStyle(allgraphs[i].plot.parentNode)["height"]);
 				allgraphs[i].w = width;
 				allgraphs[i].h = height;
-				allgraphs[i].init();
+				allgraphs[i].resize();
 				allgraphs[i].quickUpdate();
 			}
 			prevWidth = width;
@@ -1208,7 +1242,7 @@
 	function calcOneLine(s, sin, curveColor) {
 		var varname,
 			i,j,k,l,u,v,us,newu,newu0,s,ss,sss,tm,tp,ok,
-			gcont,g,gw,gh,rect,zoom,lx,ly,x,y,w,h,f,b,expr;
+			zoom,lx,ly,x,y,w,h,f,b,expr;
 		
 		// if "in" is included, it means a change of units
 		s=s.replace(re_in,";").split(';');
@@ -1265,46 +1299,15 @@
 			var f = new Function("x","return "+s[0].split("|").join("x")+";");
 			b=findBestBounds(f);
 			if(!b) return ["Error: cannot graph the function.", ""];
-			// Create the svg container
+			// Create the plot
 			if(!graphBefore) {
-				gcont=document.createElement("div");
-				g=document.createElementNS(svgns,"svg");
-				gcont.appendChild(g); eout.appendChild(gcont);
-				gcont.className="graphcont";
-				gw=gcont.clientWidth ;
-				gh=gcont.clientHeight;
-				g.setAttribute("width" ,"100%");
-				g.setAttribute("height","100%");
-				// We create "plot" which groups all elements in the graph for easy scrolling
-				plot=g.Group();
-				plot.w = gw;
-				plot.h = gh;
-				g.plot = plot;
+				plot = new Plot(eout, b);
 				allgraphs.push(plot);
+			} else {
+				plot.resize(b[0], b[1], b[2], b[3]);
 			}
-			plot.init(b[0],b[1],b[2],b[3]); // initialize the plot
-			plot.curve     .push( plot.Path    (""   ,curveColor,2) );
-			plot.quickCurve.push( plot.Polyline([0,0],curveColor,2) );
-			plot.curveEq   .push( f );
-			plot.ncurves += 1;
-			if(!graphBefore) {
-				// Create a transparent overlay for detecting mousedown
-				rect=g.Rect(0,0,"100%","100%","transparent","transparent",0);
-				rect.onmousedown = moveBegin;
-				// Create zoom buttons
-				x=5;y=5;w=14;h=14;
-				g.ZoomButton(x,y,w,h,"+").z=[1.1,1.1];
-				g.ZoomButton(x,y+h,w,h,"-").z=[1/1.1,1/1.1];
-				x+=w*2; w*=2/3; h*=2/3;
-				g.ZoomButton(x,y,w,h,"+").z=[1,1.1];
-				g.ZoomButton(x,y+2*h,w,h,"-").z=[1,1/1.1];
-				x-=w; y+=h;
-				g.ZoomButton(x+2*w,y,w,h,"+").z=[1.1,1];
-				g.ZoomButton(x,y,w,h,"-").z=[1/1.1,1];
-				// Create range button
-				x+=3.5*w; y-=.5*h; w*=2; h*=2;
-				g.RangeButton(x,y,w,h,gcont);
-			}
+			// Add the curve
+			plot.addCurve(f, curveColor);
 			// Draw the plot
 			plot.fullUpdate();
 			return [];
