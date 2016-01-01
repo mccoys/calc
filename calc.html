@@ -59,6 +59,8 @@
 	.t3a td:nth-child(1) {  font-style:italic }
 	.t3 td:nth-child(2) { width:6em; text-align:center; }
 	.t3 td:nth-child(3) { width:15em; text-align:left; font-style:italic}
+	#examples tr{ cursor:pointer; }
+	#examples tr:hover { background-color:rgba(0,0,0,0.1); }
 	.graphcont{ position:relative; width:100%; height:20em; padding:0;
 		margin:0 auto; border:0.1em solid #dddddd; }
 	.graphcont svg { width:100%; height:100% }
@@ -255,7 +257,7 @@
 		x.linspace(xm,xM);
 		// First refinement
 		var ok=false, kmax=100, i0, i1, xlim=[xm,xM], xmax, xmM;
-		maxdepth=1;
+		adaptative.maxdepth=1;
 		for(k=0; k<kmax; k+=1) {
 			for(i=0; i<99; i+=1) { u[i]=adaptative.refinement(x[i],x[i+1],0,1e-6); }
 			i0=u.indexOf(1);
@@ -1719,10 +1721,9 @@
 	// Make examples clickable
 	var exa = document.getElementById("examples").getElementsByTagName("tr");
 	for(var k=0; k<exa.length; k+=1) {
-		exa[k].style.cursor = "pointer";
 		exa[k].onclick = function(){
 			ein.value=this.childNodes[0].innerHTML.replace(/<br>/g, "\n");
-			resize();
+			inputEvent();
 			calcstart();
 		};
 	}
