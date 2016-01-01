@@ -434,6 +434,7 @@
 		var rect=g.Rect(0,0,"100%","100%","transparent","transparent",0);
 		rect.onmousedown = moveBegin;
 		rect.plot = this;
+		this.rect = rect;
 		// Create zoom buttons
 		var x=5,y=5,w=14,h=14;
 		this.ZoomButton(g,x,y    ,w,h,"+").z=[1.1,1.1];
@@ -462,6 +463,15 @@
 		button.Line(x+w,y,x+w-u1,y+v1,"#777",1.);
 		button.Line(x,y+h,x+u0,y+h-v0,"#777",1.);
 		button.Line(x,y+h,x+u1,y+h-v1,"#777",1.);
+		// Create cursor
+		this.cursor = false;
+		this.cur = this.plot.Group();
+		this.curx = this.cur.Line(0,0,0,0,"#777",1,"1% 1%");
+		this.cury = this.cur.Line(0,0,0,0,"#777",1,"1% 1%");
+		this.cur.Rect(5,-34,60,30,"#eee","#ccc",1);
+		this.curt = [this.cur.Text(" ",7,-21,12,"#777","NC",0), 
+		             this.cur.Text(" ",7, -8,12,"#777","NC",0) ];
+		this.cur.setAttribute("visibility","hidden");
 	}
 	// resizer
 	Plot.prototype.resize = function(x1,x2,y1,y2) {
@@ -481,6 +491,7 @@
 		this.quickCurve.push( this.plot.Polyline([0,0],color,2) );
 		this.curveEq   .push( f );
 		this.ncurves += 1;
+		this.plot.appendChild(this.cur); // put cursor on top
 	};
 	// replotting manager after scrolling/zooming
 	Plot.prototype.update = function() {
@@ -493,6 +504,8 @@
 		// Update axes
 		this.ax.sets({"x1":""+this.m[0]*this.s[0], "x2":""+this.M[0]*this.s[0]});
 		this.ay.sets({"y1":""+this.m[1]*this.s[1], "y2":""+this.M[1]*this.s[1]});
+		this.curx.sets({"x1":""+this.m[0]*this.s[0], "x2":""+this.M[0]*this.s[0]});
+		this.cury.sets({"y1":""+this.m[1]*this.s[1], "y2":""+this.M[1]*this.s[1]});
 		// Update ticks and labels
 		al=['NC','MW']; zz=[1,1]; // tick label alignment
 		if(this.b[1]<2*this.t[1]) { al[0]='SC'; zz[1]=-1; } // reverse tick alignment if out of box
@@ -505,6 +518,7 @@
 			p=(this.M[k]-this.m[k])/this.nt[k]; r=Math.pow(10.,ndec(p));
 			q=Math.floor(Math.sqrt(1.5*(p/r-1))); q=(1+q*q)*r; // now q is tick separation
 			p=Math.max(ndec(this.m[k]),ndec(this.M[k]))-1; r=Math.pow(10.,p); // p is the power
+			this.ticks[k].p=p; this.ticks[k].q=q; this.ticks[k].r=r;
 			i=0;
 			for(z=this.m[k]-this.m[k]%q;z<this.M[k];z+=q) { // for each tick position
 				z1[k]=z; z2[k]=z;
@@ -619,6 +633,17 @@
 		zoom.Line(x+w/5,y+h/2,x+4*w/5,y+h/2,"#777",1.5);
  		return zoom;
 	};
+	// Toggle visibility of cursor
+	Plot.prototype.toggleCursor = function() {
+		this.cursor = !this.cursor;
+		if( this.cursor ) {
+			this.rect.addEventListener("mousemove", moveCursor, false);
+			this.cur.setAttribute("visibility","visible");
+		} else {
+			this.rect.removeEventListener("mousemove", moveCursor, false);
+			this.cur.setAttribute("visibility","hidden");
+		}
+	};
 
 	// Display menu for changing plot range
 	function chooseRange(evt) {
@@ -677,6 +702,24 @@
 		evt.target.parentNode.removeChild(evt.target);
 	};
 	
+	// Display cursor when click
+	function moveCursor(evt) {
+		var plot=evt.target.plot;
+		var t=plot.plot.getAttribute("transform").match(/-?[0-9.]+[eE\+\-0-9]*/g);
+		var x = [evt.offsetX-t[0], evt.offsetY-t[1]], a, s, n, s1;
+		plot.cur.setAttribute("transform","translate("+x[0]+","+x[1]+")");
+		for( var i=0; i<2; i+=1 ) {
+			a = x[i]/plot.s[i];
+			s = parseFloat(a.toExponential(5)).toFixed(5);
+			s1 = parseFloat(s);
+			if( s.length>8 || s1==0 || parseFloat(s1.toFixed(3))==0 ) {
+				n=5;
+				do { n--; s = a.toExponential(n); } while( n>0 && s.length>10 )
+			}
+			plot.curt[i].textContent = s;
+		}
+	}
+	
 	// Make SVG plots movable
 	var moving=undefined, movu, movx, mov;
 	function moveBegin(evt) {
@@ -702,10 +745,16 @@
 	}
 	function moveEnd(evt) {
 		document.onmouseup=null;
+		evt.target.removeEventListener("mousemove", moveContinue);
 		if(!moving) return;
 		mov=moving; moving=undefined;
 		var t=mov.plot.getAttribute("transform").match(/-?[0-9.]+[eE\+\-0-9]*/g);
-		mov.t[0]=parseFloat(t[0]); mov.t[1]=parseFloat(t[1]);
+		if( mov.t[0]==parseFloat(t[0]) && mov.t[1]==parseFloat(t[1]) ) {
+			mov.toggleCursor();
+			moveCursor(evt);
+		} else {
+			mov.t[0]=parseFloat(t[0]); mov.t[1]=parseFloat(t[1]);
+		}
 		mov.fullUpdate();
 		mov=undefined;
 	}
