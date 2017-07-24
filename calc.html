@@ -25,7 +25,8 @@
 	#inbg { position:absolute; left:0; top:0; z-index:0; background-color:#f8f8f8;
 		padding:0.2em; width:40em;}
 	.inbg { float:left; height:1.2em; z-index:1; padding:0; margin:0; width:100%; border:none;}
-	#out { padding:1em 0; margin:0; font:1.2em serif; color:#777;}
+	#out { padding:1em 0; margin:0; font:1.2em serif; color:#777; line-height:1.5em;}
+	#out font.clickable { cursor:pointer }
 	#outcont, #hcont { width:40em; padding:0.2em; margin:0 auto; }
 	#outcont { min-height:5em; background-color:none;}
 	#hcont { min-height:1.2em; background-color:#eee; box-shadow: 0 0 0.3em #bbb;
@@ -83,7 +84,7 @@
 		.inbg { width:100%; }
 		#help1, #help2, #help3, #help4 { font-size:0.9em;}
 		#help1c, #help2c, #help3c, #help4c { font-size:0.9em; height:auto;}
-		#out { font-size:0.9em; }
+		#out { font-size:0.9em;  line-height:1.1em;}
 		#hcont { min-height:0.9em; }
 		#outcont, #hcont { padding:0.2em 0; }
 		#hintbox { display:none; }
@@ -1281,8 +1282,12 @@
 			if( s.length==0 ) continue;
 			
 			// Output
+			v = printOneLine(s[0], s[1], 0);
+			value = v[0];
+			repr = v[1];
 			if(j>0) {eout.innerHTML += "<br/>";}
-			eout.innerHTML += "<font style=\"color:"+colors[j]+"\">"+s[0]+"</font>&nbsp;&nbsp;&nbsp;<font style=\"color:#77b\">"+s[1]+"</font>";
+			eout.innerHTML += "<font class=\"clickable\" id=\"out"+j+"\" style=\"color:"+colors[j]+"\" onclick=\"changeRepresentation("+j+",\'"+s[0]+"\',"+s[1]+")\">"+value+"</font>&nbsp;&nbsp;&nbsp;<font style=\"color:#77b\">"+s[2]+"</font>";
+			document.getElementById("out"+j).repr = repr;
 		}
 		
 		graph = false;
@@ -1336,7 +1341,7 @@
 		s=s.replace(re_unit1,"$1*$2");
 		// Remove spaces; Replace (+ with (
 		s=s.replace(re_s,"").replace(re_ss,"(").replace(")(",")*(");
-
+		
 		// Calculate. The output should be a 2-element array containing 
 		// the result and the units.
 		s=calc(s);
@@ -1382,10 +1387,47 @@
 			u=newu0.replace(/\^([0-9.\-]+)/g,"<sup>$1</sup>").replace(/\*/g,"&sdot;");
 			v/=us[0]; // divide the original result by the new units.
 		}
+		
+		// Manage storing to a variable
+		if(varname.length>0) {
+			us=" ";
+			for(l=0;l<8;l+=1) { // for each of m kg s A K mol cd rad,  
+				if(s[1][l]) { // print unit if exists.
+					if(l>0) {us+="*";}
+					us+=un[l];
+					if(s[1][l]!=1) { us+="^"+s[1][l]; }
+				}
+			}
+			// We check whether the variable already exists. If yes, replace it
+			for(l=0;l<varout.length;l+=1)
+				if(varname==varout[l][2])
+					varout.splice(l,1);
+			// In varout, we store a regexp to recognize the variable, and a replacement value
+			varout.push([new RegExp("(\\W)"+varname+"(\\W)","g"), s[0]+us, varname]);
+		}
+		
+		if(varname.length==0 && expr.length>0) varname = expr;
+		s[0]=varname; s[1]=v; s[2]=u;
+		
+		return s;
+	}
+	
+	// Print one line given parts of the final expression
+	function printOneLine(varname, v, repr) {
+		// repr = 0 : auto representation
+		//        1 : force decimal
+		//        2 : force exponential
 		// Resolve some problems of precision
 		v=eval(eval(v).toExponential(15))+"";
-		if(v>1000. && v.length>10) { v=eval(v).toExponential(10); }
+		if(repr==2 || (repr==0 && v>1000. && v.length>10)) {
+			v = eval(v).toExponential(10);
+			repr = 2;
+		} else if (repr==1) {
+			v = eval(v).toFixed(15)
+		}
 		ss = v.split('e');
+		if( ss.length>1 ) repr=2;
+		else repr=1;
 		sss = ss[0];
 		l = sss.length-1;
 		if(l>8) {
@@ -1411,7 +1453,7 @@
 		
 		if(sss[1].length==0) { ss[0]=sss[0]; }
 		else { ss[0] = sss.join("."); }
-	
+		
 		// Rebuild the string
 		v = ss[0];
 		if(ss.length>1) {
@@ -1419,33 +1461,21 @@
 			if(v=="1") { v=ss[1]; }
 			else { v=v+" &#215; "+ss[1]; }
 		}
-			
-		// Manage storing to a variable
 		if(varname.length>0) {
-			us=" ";
-			for(l=0;l<8;l+=1) { // for each of m kg s A K mol cd rad,  
-				if(s[1][l]) { // print unit if exists.
-					if(l>0) {us+="*";}
-					us+=un[l];
-					if(s[1][l]!=1) { us+="^"+s[1][l]; }
-				}
-			}
-			// We check whether the variable already exists. If yes, replace it
-			for(l=0;l<varout.length;l+=1)
-				if(varname==varout[l][2])
-					varout.splice(l,1);
-			// In varout, we store a regexp to recognize the variable, and a replacement value
-			varout.push([new RegExp("(\\W)"+varname+"(\\W)","g"), s[0]+us, varname]);
 			v = varname+" = "+v;
-		} else if(expr.length>0) {
-			v = expr+" = "+v;
 		}
 		
-		s[0]=v; s[1]=u;
-		
-		return s;
+		return [v, repr];
 	}
 	
+	// Change the representation (decimal/exponential)
+	function changeRepresentation(j, prefix, value) {
+		var e = document.getElementById("out"+j), v;
+		if( e.repr == 2 ) v = printOneLine(prefix, value, 1);
+		else              v = printOneLine(prefix, value, 2);
+		e.repr = v[1];
+		e.innerHTML = v[0];
+	}
 	
 	// Parse the string and calculate
 	function calc(s) {
