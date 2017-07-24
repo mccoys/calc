@@ -1243,6 +1243,15 @@
 		return s;
 	}
 
+	// Change the representation (decimal/exponential)
+	function changeRepresentation() {
+		var v;
+		if( this.repr_ == 2 ) v = printOneLine(this.prefix_, this.value_, 1);
+		else                  v = printOneLine(this.prefix_, this.value_, 2);
+		this.repr_ = v[1];
+		this.innerHTML = v[0];
+	}
+
 	// Initiate calculation
 	var graph = false, graphBefore = false, plot, allgraphs=[];
 	function calcstart() {
@@ -1285,9 +1294,19 @@
 			v = printOneLine(s[0], s[1], 0);
 			value = v[0];
 			repr = v[1];
-			if(j>0) {eout.innerHTML += "<br/>";}
-			eout.innerHTML += "<font class=\"clickable\" id=\"out"+j+"\" style=\"color:"+colors[j]+"\" onclick=\"changeRepresentation("+j+",\'"+s[0]+"\',"+s[1]+")\">"+value+"</font>&nbsp;&nbsp;&nbsp;<font style=\"color:#77b\">"+s[2]+"</font>";
-			document.getElementById("out"+j).repr = repr;
+			if(j>0) { eout.appendChild(document.createElement("br")); }
+			var e1 = document.createElement("font");
+			e1.className = "clickable";
+			e1.style.color = colors[j];
+			e1.prefix_ = s[0]; e1.value_ = s[1]; e1.repr_ = repr;
+			e1.innerHTML = value;
+			e1.onclick = changeRepresentation;
+			var e2 = document.createElement("font");
+			e2.style.color = "#77b";
+			e2.innerHTML = s[2];
+			eout.appendChild(e1);
+			eout.appendChild(document.createTextNode("    "));
+			eout.appendChild(e2);
 		}
 		
 		graph = false;
@@ -1466,15 +1485,6 @@
 		}
 		
 		return [v, repr];
-	}
-	
-	// Change the representation (decimal/exponential)
-	function changeRepresentation(j, prefix, value) {
-		var e = document.getElementById("out"+j), v;
-		if( e.repr == 2 ) v = printOneLine(prefix, value, 1);
-		else              v = printOneLine(prefix, value, 2);
-		e.repr = v[1];
-		e.innerHTML = v[0];
 	}
 	
 	// Parse the string and calculate
