@@ -602,6 +602,8 @@
 			this.quickCurve[k].setAttribute("points",[0,0]);
 			this.curve[k].setAttribute("d",this.d);
 		}
+		// Update global bounds
+		graph_bounds[this.igraph] = [this.x1, this.x2, this.y1, this.y2];
 	};
 	Plot.prototype.addMorePoints = function(x,y) {
 		if(isFinite(y)) {
@@ -1253,13 +1255,14 @@
 	}
 
 	// Initiate calculation
-	var graph = false, graphBefore = false, plot, allgraphs=[];
+	var graph = false, graphBefore = false, plot, allgraphs=[], graph_bounds=[], igraph;
 	function calcstart() {
 		var sin=ein.value, sout ="", colors=[], s=[], t, k=0, i, j;
 		
 		eout.innerHTML = "";
 		varout = [];
 		allgraphs=[];
+		igraph = 0;
 		
 		// wrong characters
 		var err=sin.replace(re_err,'');
@@ -1383,12 +1386,21 @@
 			var f = new Function("x","return "+s[0].split("|").join("x")+";");
 			b=findBestBounds(f);
 			if(!b) return [false, "Error: cannot graph the function.", ""];
-			// Create the plot
-			if(!graphBefore) {
-				plot = new Plot(eout, b);
-				allgraphs.push(plot);
+			var change_current_bounds = true;
+			if(igraph<graph_bounds.length) {
+				b=graph_bounds[igraph];
+				change_current_bounds = false;
 			} else {
-				plot.resize(b[0], b[1], b[2], b[3]);
+				graph_bounds.push(b);
+			}
+			// Create the plot
+			if(graphBefore) {
+				if(change_current_bounds) plot.resize(b[0], b[1], b[2], b[3]);
+			} else {
+				plot = new Plot(eout, b);
+				plot.igraph = igraph;
+				allgraphs.push(plot);
+				igraph += 1;
 			}
 			// Add the curve
 			plot.addCurve(f, curveColor);
