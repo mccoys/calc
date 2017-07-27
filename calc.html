@@ -1303,19 +1303,19 @@
 			}
 			
 			// Output
-			v = printOneLine(s[0], s[1], 0);
+			v = printOneLine(s[1], s[2], 0);
 			value = v[0];
 			repr = v[1];
 			if(j>0) { eout.appendChild(document.createElement("br")); }
 			var e1 = document.createElement("font");
 			e1.className = "clickable";
 			e1.style.color = colors[j];
-			e1.prefix_ = s[0]; e1.value_ = s[1]; e1.repr_ = repr;
+			e1.prefix_ = s[1]; e1.value_ = s[2]; e1.repr_ = repr;
 			e1.innerHTML = value;
 			e1.onclick = changeRepresentation;
 			var e2 = document.createElement("font");
 			e2.style.color = "#77b";
-			e2.innerHTML = s[2];
+			e2.innerHTML = s[3];
 			eout.appendChild(e1);
 			eout.appendChild(document.createTextNode("\u00A0\u00A0\u00A0"));
 			eout.appendChild(e2);
@@ -1447,7 +1447,7 @@
 		}
 		
 		if(varname.length==0 && expr.length>0) varname = expr;
-		s[0]=varname; s[1]=v; s[2]=u;
+		s=[ true, varname, v, u ];
 		
 		return s;
 	}
